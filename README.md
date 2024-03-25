@@ -2,7 +2,10 @@
 
 ## Installation
 
-> 
+To install CroCoDeEL using Conda, execute the command:
+`conda env create -p CroCoDeEL --file conda_env/environment.yml`
+
+CroCoDeEL will be released on Bioconda soon.
 
 ## Usage
 
