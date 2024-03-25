@@ -1,5 +1,11 @@
 # CroCoDeEL : **CRO**ss-sample **CO**ntamination **DE**tection and **E**stimation of its **L**evels
 
+## Introduction
+
+Metagenomic sequencing offers valuable insights into microbial ecosystems. However, one of the big issues in metagenomics is cross-sample contamination. This occurs when microbial content from samples processed together gets mixed, potentially leading to misleading conclusions.
+
+We introduce here a tool called CroCoDeEL to detect the specific patterns indicative of cross-sample contamination. This method accurately identifies not only the contaminated samples but also pinpoints their contamination sources and their rates.
+
 ## Installation
 
 To install CroCoDeEL using Conda, execute the command:
