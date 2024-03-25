@@ -9,7 +9,6 @@ import argparse
 def get_arguments(args=sys.argv[1:]):
     parser = argparse.ArgumentParser(description="Parses command.")
     parser.add_argument("-i", "--input", type=str, help="MGS profiles path.", required=True)
-    #parser.add_argument("-c", "--contamination_results", type=str, help="File of detected contaminations.", required=True)
     parser.add_argument("-o", "--output_directory_path", type=str, help="Output directory path.", required=True)
     arguments = parser.parse_args(args)
     return arguments
@@ -63,30 +62,43 @@ def main():
                     axis_title_y=element_text(size=size),
                     axis_text_x=element_text(size=size),
                     axis_text_y=element_text(size=size),
-                    title=element_text(size=size)) +
-                labs(x=sample2, 
-                    y=sample1,
-                    title="prob = {}, rate = {}%, rho = {}".format(probability, contamination_rate, round(spearman, 2))) +
-                guides(color=False))
+                    title=element_text(size=size)))
             
+            titles = []
+            
+            if 'plate' in contamination_results.columns.tolist():
+                plate = str(contamination_results.iloc[i, :]["plate"]) 
+                titles.append("plate = {}".format(plate))
+                
+            if 'longitudinal' in contamination_results.columns.tolist():
+                longitudinal = str(contamination_results.iloc[i, :]["longitudinal"])
+                titles.append("longitudinal = {}".format(longitudinal))
+                
+            title = ', '.join(titles)
+            print(title)
+            g = (g + labs(x=sample2, 
+                    y=sample1,
+                    title = "prob = {}, rate = {}%, rho = {}".format(probability, contamination_rate, round(spearman, 2)) + "\n" + title) +
+                guides(color=False))
+                
             pw_g = pw.load_ggplot(g, figsize=(3,3))
 
             plots.append(pw_g)
             
-    for i in range(nb_plots_to_add):
-        g = (ggplot() + theme_void())
-        pw_g = pw.load_ggplot(g, figsize=(3,3))
-        plots.append(pw_g)
-    
-    p = PdfPages("contamination_results.pdf") 
-    for page in range(len(plots)//16):
-        rows = []
-        for k in range(page*16, page*16+16, 4):
-            row = pw.stack(plots[k:k+4], operator="|", margin=0.2)
-            rows.append(row)
-        all_page = pw.stack(rows, operator='/', margin=0.2)
-        all_page.savefig(p, format='pdf')
-    p.close()
+        for i in range(nb_plots_to_add):
+            g = (ggplot() + theme_void())
+            pw_g = pw.load_ggplot(g, figsize=(3,3))
+            plots.append(pw_g)
+        
+        p = PdfPages("contamination_results.pdf") 
+        for page in range(len(plots)//16):
+            rows = []
+            for k in range(page*16, page*16+16, 4):
+                row = pw.stack(plots[k:k+4], operator="|", margin=0.2)
+                rows.append(row)
+            all_page = pw.stack(rows, operator='/', margin=0.2)
+            all_page.savefig(p, format='pdf')
+        p.close()
     
 if __name__ == '__main__':
     main()
