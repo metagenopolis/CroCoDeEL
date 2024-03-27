@@ -22,17 +22,17 @@ _CroCoDeEL will be released on Bioconda soon._
 
 To run CroCoDeEL, use the following command:
 
-> nextflow run main.nf -w <temporary_file_path> \
+```nextflow run main.nf -w <temporary_file_path> \
 --mgsProfilesPath <mgs_profiles> \
---outputDirectoryPath <output_directory_path>
+--outputDirectoryPath <output_directory_path>```
 
 You can add information about the samples plates or information about the samples, particularly if they are longitudinal.
 
-> nextflow run main.nf -w <temporary_file_path> \
+```nextflow run main.nf -w <temporary_file_path> \
 --mgsProfilesPath <mgs_profiles_path> \
 --outputDirectoryPath <output_directory_path>  \
 --plateMapPath  <plate_map_path> \
---longitudinalMetadataPath <longitudinal_metadata_path> 
+--longitudinalMetadataPath <longitudinal_metadata_path>```
 
 ### 1. Abundance table of MGS
 ____________________
