@@ -10,11 +10,15 @@ We introduce here a tool called CroCoDeEL to detect the specific patterns indica
 
 To install CroCoDeEL using Conda, execute the command:
 
-```conda env create -p CroCoDeEL_env --file conda_env/environment.yml```
+```
+conda env create -p CroCoDeEL_env --file conda_env/environment.yml
+```
 
 Then, activate the environment using the following command: 
 
-```conda activate ./CroCoDeEL_env```
+```
+conda activate ./CroCoDeEL_env
+```
 
 _CroCoDeEL will be released on Bioconda soon._
 
