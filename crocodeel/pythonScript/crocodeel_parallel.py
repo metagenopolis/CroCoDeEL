@@ -1,8 +1,9 @@
+import os
+os.environ['OMP_NUM_THREADS'] = '1'
 import numpy as np
 import pandas as pd
 import argparse
 import sys
-import os
 import joblib
 from sklearn.linear_model import RANSACRegressor, LinearRegression
 from sklearn.metrics import mean_squared_error
@@ -33,7 +34,7 @@ class ContaminationSearcher:
     NUMBER_SPECIFIC_SPECIES_TO_CONSIDER = 10
 
     def __init__(self, mgs_profiles, rf_classifier):
-        self.mgs_profiles = mgs_profiles
+        self.mgs_profiles = mgs_profiles.div(mgs_profiles.sum(axis=0), axis=1)
         self.rf_classifier = rf_classifier
 
     def get_number_of_points_in_upper_left_triangle(self, point, other_points):
@@ -311,7 +312,7 @@ class ContaminationSearcher:
         all_contamination_cases = []
 
         with Pool(processes=num_processes) as pool:
-            all_tasks = pool.imap(self._classify_sample_pair, all_sample_pairs, chunksize=50)
+            all_tasks = pool.imap_unordered(self._classify_sample_pair, all_sample_pairs, chunksize=50)
             pbar = partial(tqdm.tqdm, total=num_sample_pairs, bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}')
 
             for contamination_case in pbar(all_tasks):
@@ -322,10 +323,7 @@ class ContaminationSearcher:
 
 
 def main():
-    #mgs_profiles = pd.read_csv("/export/mgps/home/fplazaonate/crocodeel/test/mgs_profiles_test.tsv", sep='\t', header=0, index_col=0)
     mgs_profiles = pd.read_csv("/export/mgps/home/fplazaonate/crocodeel/test.tsv" , sep='\t', header=0, index_col=0)
-    mgs_profiles = mgs_profiles.div(mgs_profiles.sum(axis=0), axis=1)
-
     rf_classifier = joblib.load("/export/mgps/home/fplazaonate/crocodeel/crocodeel/models/crocodeel_last_version.joblib")
 
     contamination_searcher = ContaminationSearcher(mgs_profiles,rf_classifier)
