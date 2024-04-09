@@ -1,10 +1,13 @@
 from dataclasses import dataclass, field
-from contamination_case import ContaminationCase
 from typing import BinaryIO
+from functools import partial
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import tqdm
+from contamination_case import ContaminationCase
+
 
 @dataclass
 class ContaminationPlotsReport:
@@ -108,7 +111,12 @@ class ContaminationPlotsReport:
         )
 
         with PdfPages(pdf_fh) as pdf:
-            for page in range(num_pages):
+            pbar = partial(
+                tqdm.tqdm,
+                total=num_pages,
+                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} pages generated",
+            )
+            for page in pbar(range(num_pages)):
                 fig = plt.figure()
                 fig, axs = plt.subplots(
                     self.nrow, self.ncol, figsize=(4 * self.ncol, 4 * self.nrow)

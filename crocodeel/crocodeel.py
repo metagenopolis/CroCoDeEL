@@ -3,10 +3,9 @@
 
 import sys
 import argparse
-from contamination_plots_report import ContaminationPlotsReport
-from contamination_case import ContaminationCase, ContaminationCaseIO
-
 import pandas as pd
+from contamination_plots_report import ContaminationPlotsReport
+from contamination_case import ContaminationCaseIO
 
 
 def get_arguments() -> argparse.Namespace:
@@ -61,7 +60,7 @@ def get_arguments() -> argparse.Namespace:
         "--nrow",
         dest="nrow",
         type=int,
-        choices=range(1,10),
+        choices=range(1,11),
         default=4,
         metavar="NROW",
         help="Number of scatterplots to draw vertically on each page "
@@ -71,7 +70,7 @@ def get_arguments() -> argparse.Namespace:
         "--ncol",
         dest="ncol",
         type=int,
-        choices=range(1,10),
+        choices=range(1,11),
         default=4,
         metavar="NCOL",
         help="Number of scatterplots to draw horizontally on each page "
