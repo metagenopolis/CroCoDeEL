@@ -2,7 +2,7 @@ import sys
 import argparse
 import csv
 from dataclasses import dataclass, field
-from typing import TextIO
+from typing import TextIO, BinaryIO
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -126,13 +126,13 @@ class ContaminationPlotsReport:
             f"rho = {round(spearman_rho, 2)}"
         )
 
-    def save_to_pdf(self, pdf_filepath: str) -> None:
+    def save_to_pdf(self, pdf_fh: BinaryIO) -> None:
         num_plots_per_page = self.nrow * self.ncol
         num_pages = int(
             np.ceil(float(len(self.contamination_cases) / num_plots_per_page))
         )
 
-        with PdfPages(pdf_filepath) as pdf:
+        with PdfPages(pdf_fh) as pdf:
             for page in range(num_pages):
                 fig = plt.figure()
                 fig, axs = plt.subplots(
@@ -150,53 +150,3 @@ class ContaminationPlotsReport:
                 plt.tight_layout()
                 fig.savefig(pdf, format="pdf")
                 plt.close(fig)
-
-
-def get_arguments():
-    parser = argparse.ArgumentParser(description="Parses command.")
-    parser.add_argument(
-        "-i", "--input", type=str, help="MGS profiles path.", required=True
-    )
-    parser.add_argument(
-        "-o",
-        "--output_directory_path",
-        type=str,
-        help="Output directory path.",
-        required=True,
-    )
-    arguments = parser.parse_args()
-    return arguments
-
-
-def main():
-    arguments = get_arguments()
-
-    mgs_profiles = pd.read_csv(arguments.input, sep="\t", header=0, index_col=0)
-    mgs_profiles = mgs_profiles.div(mgs_profiles.sum(axis=0), axis=1)
-
-    contamination_results = pd.read_csv(
-        arguments.output_directory_path + "/contamination_results.txt", sep="\t"
-    )
-    contamination_results = contamination_results.sort_values(
-        by=["probability", "rate"], ascending=[False, False]
-    )
-
-    mgs_profiles = pd.read_csv(
-        arguments.input,
-        sep="\t",
-        header=0,
-        index_col=0,
-    )
-    mgs_profiles = mgs_profiles.div(mgs_profiles.sum(axis=0), axis=1)
-
-    with open(
-        arguments.output_directory_path + "/contamination_results.txt", "r", encoding="utf-8"
-    ) as fh:
-        contamination_cases = list(ContaminationCase.tsv_reader(fh))
-
-    report = ContaminationPlotsReport(mgs_profiles, contamination_cases)
-    report.save_to_pdf("contamination_results.pdf")
-
-
-if __name__ == "__main__":
-    main()
