@@ -231,9 +231,7 @@ class ContaminationSearcher:
     def crocodeel(self, species_potentially_in_contamination_line,
                 species_potentially_in_contamination_line_indexes,
                 not_filtered_data,
-                minimum_abundance_target_sample, 
-                source_sample_name, 
-                target_sample_name):
+                minimum_abundance_target_sample):
         (species_potentially_in_contamination_line_inliers, species_potentially_in_contamination_line_outliers, inliers_indexes, outliers_indexes,
         intercept) = self.get_coefficients_of_potential_contamination_line(
             species_potentially_in_contamination_line, species_potentially_in_contamination_line_indexes)
@@ -263,9 +261,7 @@ class ContaminationSearcher:
                     return self.crocodeel(species_potentially_in_contamination_line_outliers, 
                                     outliers_indexes,
                                     not_filtered_data,
-                                    minimum_abundance_target_sample, 
-                                    source_sample_name, 
-                                    target_sample_name)
+                                    minimum_abundance_target_sample)
                 else:
                     contamination_probability = 0
                     contamination_rate = 0
@@ -293,9 +289,7 @@ class ContaminationSearcher:
             y_prediction, contamination_probability, contamination_rate, inliers_indexes = self.crocodeel(species_potentially_in_contamination_line,
                                                                                     species_potentially_in_contamination_line_indexes,
                                                                                     not_filtered_data,
-                                                                                    minimum_abundance_target_sample, 
-                                                                                    source, 
-                                                                                    target)
+                                                                                    minimum_abundance_target_sample)
         # inliers_indexes_list = ",".join(map(str, inliers_indexes))
         return [y_prediction, target, source, contamination_probability, contamination_rate]
 
