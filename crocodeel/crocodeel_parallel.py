@@ -305,8 +305,14 @@ class ContaminationSearcher:
         all_contamination_cases = []
 
         with Pool(processes=num_processes) as pool:
-            all_tasks = pool.imap_unordered(self._classify_sample_pair, all_sample_pairs, chunksize=50)
-            pbar = partial(tqdm.tqdm, total=num_sample_pairs, bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}')
+            all_tasks = pool.imap_unordered(
+                self._classify_sample_pair, all_sample_pairs, chunksize=50
+            )
+            pbar = partial(
+                tqdm.tqdm,
+                total=num_sample_pairs,
+                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} sample pairs inspected",
+            )
 
             for contamination_case in pbar(all_tasks):
                 if contamination_case[0]:
