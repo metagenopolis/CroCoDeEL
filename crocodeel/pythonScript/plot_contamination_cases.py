@@ -117,8 +117,8 @@ class ContaminationPlotsReport:
         ax.set_xticklabels(ticks_labels)
         ax.set_yticklabels(ticks_labels)
 
-        ax.set_xlabel(contamination_case.source)
-        ax.set_ylabel(contamination_case.target)
+        ax.set_xlabel(contamination_case.target)
+        ax.set_ylabel(contamination_case.source)
 
         ax.set_title(
             f"prob = {contamination_case.probability}, "
