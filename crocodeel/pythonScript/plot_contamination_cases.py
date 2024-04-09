@@ -94,10 +94,10 @@ class ContaminationPlotsReport:
         # Add contamination line
         if self.show_contamination_line:
             ax.axline(
-                [
+                (
                     self.pseudo_zero,
                     self.pseudo_zero - np.log10(contamination_case.rate),
-                ],
+                ),
                 slope=1,
                 color="red",
                 linestyle="-",
