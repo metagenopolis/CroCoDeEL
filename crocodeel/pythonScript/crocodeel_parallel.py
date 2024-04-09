@@ -95,7 +95,7 @@ class ContaminationSearcher:
 
             inliers = ransac.inlier_mask_
             outliers = np.logical_not(inliers)
-            slope, intercept = ransac.estimator_.coeffs
+            _, intercept = ransac.estimator_.coeffs
 
             species_inliers = np.vstack([X[inliers], y[inliers]]).reshape(2,-1).T
             species_inliers_indexes = X_indexes[inliers]
@@ -103,9 +103,9 @@ class ContaminationSearcher:
             species_outliers_indexes = X_indexes[outliers]
 
         except ValueError as e:
-            species_inliers, species_outliers, species_inliers_indexes, species_outliers_indexes, slope, intercept = np.empty((0,0)), np.empty((0,0)), np.empty((0,0)), np.empty((0,0)), 0, 0
+            species_inliers, species_outliers, species_inliers_indexes, species_outliers_indexes, intercept = np.empty((0,0)), np.empty((0,0)), np.empty((0,0)), np.empty((0,0)), 0
 
-        return species_inliers, species_outliers, species_inliers_indexes, species_outliers_indexes, slope, intercept
+        return species_inliers, species_outliers, species_inliers_indexes, species_outliers_indexes, intercept
 
     def select_specific_species_to_source_sample(self, not_filtered_data, minimum_abundance_target_sample):
         """ """
@@ -120,12 +120,12 @@ class ContaminationSearcher:
     def get_number_of_species_in_contamination_line(self, data):
         return data.shape[0]
 
-    def get_intercept_specific_species_to_source_sample(self, slope, intercept, minimum_abundance_target_sample):
-        return slope * np.log10(minimum_abundance_target_sample/10) + intercept
+    def get_intercept_specific_species_to_source_sample(self, intercept, minimum_abundance_target_sample):
+        return np.log10(minimum_abundance_target_sample/10) + intercept
 
-    def get_number_of_specific_species_to_source_sample_above_line(self, slope, intercept, specific_species_to_source_sample, minimum_abundance_target_sample):
+    def get_number_of_specific_species_to_source_sample_above_line(self, intercept, specific_species_to_source_sample, minimum_abundance_target_sample):
         """ """
-        intercept_specific_species_to_source_sample = get_intercept_specific_species_to_source_sample(slope, intercept, minimum_abundance_target_sample)
+        intercept_specific_species_to_source_sample = get_intercept_specific_species_to_source_sample(intercept, minimum_abundance_target_sample)
         return np.count_nonzero(specific_species_to_source_sample > intercept_specific_species_to_source_sample)
 
     def get_spearman_correlation(self, data):
@@ -133,11 +133,11 @@ class ContaminationSearcher:
             return 0, 0
         return spearmanr(data[:,0], data[:,1])
 
-    def get_number_of_species_above_line(self, shared_species, slope, intercept):
+    def get_number_of_species_above_line(self, shared_species, intercept):
         """"""
         number_of_species_above_line = 0
         for x, y in shared_species:
-            if y > (slope * x + intercept+0.2):
+            if y > (x + intercept+0.2):
                 number_of_species_above_line += 1
         return number_of_species_above_line
 
@@ -187,7 +187,7 @@ class ContaminationSearcher:
         distances = np.abs(-data[:,0]+data[:,1]-intercept)/np.sqrt(2)
         return distances.mean()
 
-    def get_metrics(self, slope, intercept, species_potentially_in_contamination_line_inliers, not_filtered_data, minimum_abundance_target_sample):
+    def get_metrics(self, intercept, species_potentially_in_contamination_line_inliers, not_filtered_data, minimum_abundance_target_sample):
         # Specific species to the source sample
         specific_species_to_source_sample = self.select_specific_species_to_source_sample(not_filtered_data, minimum_abundance_target_sample)
 
@@ -198,7 +198,7 @@ class ContaminationSearcher:
         #
         number_of_species_in_contamination_line = self.get_number_of_species_in_contamination_line(species_potentially_in_contamination_line_inliers)
         ratio_species_in_contamination_line_to_shared_species = number_of_species_in_contamination_line/number_of_shared_species
-        number_of_species_above_line = self.get_number_of_species_above_line(shared_species, slope, intercept)
+        number_of_species_above_line = self.get_number_of_species_above_line(shared_species, intercept)
         ratio_species_above_line_to_shared_species = number_of_species_above_line/number_of_shared_species
 
         #
@@ -206,7 +206,7 @@ class ContaminationSearcher:
         mean_distance_to_farthest_neighbors = self.get_mean_distance_to_farthest_neighbors(species_potentially_in_contamination_line_inliers)
 
         #
-        intercept_specific_species_to_source_sample = self.get_intercept_specific_species_to_source_sample(slope, intercept, minimum_abundance_target_sample)
+        intercept_specific_species_to_source_sample = self.get_intercept_specific_species_to_source_sample(intercept, minimum_abundance_target_sample)
         distance_between_mean_abundance_of_specific_species_and_contamination_line = self.get_distance_between_mean_abundance_of_specific_species_and_contamination_line(specific_species_to_source_sample, intercept_specific_species_to_source_sample)
         distance_between_mean_abundance_of_specific_species_and_contamination_line2 = self.get_distance_between_mean_abundance_of_specific_species_and_contamination_line2(specific_species_to_source_sample, intercept_specific_species_to_source_sample, species_potentially_in_contamination_line_inliers)
 
@@ -235,12 +235,11 @@ class ContaminationSearcher:
                 source_sample_name, 
                 target_sample_name):
         (species_potentially_in_contamination_line_inliers, species_potentially_in_contamination_line_outliers, inliers_indexes, outliers_indexes,
-        slope, intercept) = self.get_coefficients_of_potential_contamination_line(
+        intercept) = self.get_coefficients_of_potential_contamination_line(
             species_potentially_in_contamination_line, species_potentially_in_contamination_line_indexes)
 
         if species_potentially_in_contamination_line_inliers.shape[0] != 0:
             X = np.array([self.get_metrics(
-                slope,
                 intercept,
                 species_potentially_in_contamination_line_inliers,
                 not_filtered_data,
@@ -323,7 +322,7 @@ class ContaminationSearcher:
 
 
 def main():
-    mgs_profiles = pd.read_csv("/export/mgps/home/fplazaonate/crocodeel/test.tsv" , sep='\t', header=0, index_col=0)
+    mgs_profiles = pd.read_csv("/export/mgps/home/fplazaonate/crocodeel/test/mgs_profiles_test.tsv" , sep='\t', header=0, index_col=0)
     rf_classifier = joblib.load("/export/mgps/home/fplazaonate/crocodeel/crocodeel/models/crocodeel_last_version.joblib")
 
     contamination_searcher = ContaminationSearcher(mgs_profiles,rf_classifier)
