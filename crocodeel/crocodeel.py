@@ -3,6 +3,7 @@
 
 import sys
 import argparse
+from contamination_case import ContaminationCaseIO
 from contamination_plots_report import ContaminationPlotsReport, ContaminationCase
 import pandas as pd
 
@@ -77,7 +78,7 @@ def main() -> None:
             index_col=0,
         )
 
-        contamination_cases = list(ContaminationCase.tsv_reader(args.crocodeel_results))
+        contamination_cases = list(ContaminationCaseIO.read_tsv(args.crocodeel_results))
 
         report = ContaminationPlotsReport(species_abundance_table, contamination_cases)
         report.save_to_pdf(args.output_file)

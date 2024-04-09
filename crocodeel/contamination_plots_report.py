@@ -1,35 +1,10 @@
-import sys
-import argparse
-import csv
 from dataclasses import dataclass, field
-from typing import TextIO, BinaryIO
+from contamination_case import ContaminationCase
+from typing import BinaryIO
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-
-
-@dataclass
-class ContaminationCase:
-    source: str
-    target: str
-    rate: float
-    probability: float
-    contamination_specific_species: list[str]
-
-    @staticmethod
-    def tsv_reader(fh: TextIO):
-        tsv_reader = csv.DictReader(fh, delimiter="\t")
-
-        for row in tsv_reader:
-            contamination_specific_species = row["msp_list"].split(",")
-            yield ContaminationCase(
-                row["source"],
-                row["target"],
-                float(row["rate"]),
-                float(row["probability"]),
-                contamination_specific_species,
-            )
 
 @dataclass
 class ContaminationPlotsReport:
