@@ -12,8 +12,8 @@ class ContaminationPlotsReport:
     contamination_cases: list[ContaminationCase]
     nrow: int = field(default=4)
     ncol: int = field(default=4)
-    show_contamination_line: bool = field(default=True)
-    show_contamination_specific_species: bool = field(default=True)
+    no_contamination_line: bool = field(default=False)
+    color_contamination_specific_species: bool = field(default=False)
     pseudo_zero: float = field(init=False)
 
     def __post_init__(self):
@@ -44,7 +44,7 @@ class ContaminationPlotsReport:
             facecolor="none",
         )
 
-        if self.show_contamination_specific_species:
+        if self.color_contamination_specific_species:
             edge_colors = [
                 (
                     "orange"
@@ -67,7 +67,7 @@ class ContaminationPlotsReport:
         )
 
         # Add contamination line
-        if self.show_contamination_line:
+        if not self.no_contamination_line:
             ax.axline(
                 (
                     self.pseudo_zero,
