@@ -96,7 +96,7 @@ def get_arguments() -> argparse.Namespace:
         help="Path to the output PDF file.",
     )
 
-    return parser.parse_args(args=None if sys.argv[1:] else ["--help"])
+    return parser.parse_args(args=sys.argv[1:] or ["--help"])
 
 
 def main() -> None:
@@ -109,8 +109,10 @@ def main() -> None:
             header=0,
             index_col=0,
         )
+        args.species_abundance_table.close()
 
         contamination_cases = list(ContaminationCaseIO.read_tsv(args.crocodeel_results))
+        args.crocodeel_results.close()
 
         report = ContaminationPlotsReport(
             mgs_profiles=species_abundance_table,
@@ -121,6 +123,7 @@ def main() -> None:
             color_contamination_specific_species=args.color_conta_species
         )
         report.save_to_pdf(args.output_file)
+        args.output_file.close()
 
 
 if __name__ == "__main__":
