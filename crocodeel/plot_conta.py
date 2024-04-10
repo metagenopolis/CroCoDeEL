@@ -51,7 +51,7 @@ class ContaminationPlotsReport:
             edge_colors = [
                 (
                     "orange"
-                    if species in contamination_case.contamination_specific_species
+                    if str(species) in contamination_case.contamination_specific_species
                     else "black"
                 )
                 for species in self.mgs_profiles.index[non_zero_species]
