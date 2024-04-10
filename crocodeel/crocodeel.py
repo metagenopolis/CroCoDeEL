@@ -3,13 +3,31 @@
 
 import sys
 import argparse
+import multiprocessing
 import pandas as pd
-from contamination_plots_report import ContaminationPlotsReport
 from contamination_case import ContaminationCaseIO
+from search_conta import ContaminationSearcherDriver
+from plot_conta import ContaminationPlotsReport
+
+
+def nproc(value) -> int:
+    max_nproc = multiprocessing.cpu_count()
+
+    try:
+        value = int(value)
+    except ValueError as value_err:
+        raise argparse.ArgumentTypeError('NPROC is not an integer') from value_err
+
+    if value <= 0:
+        raise argparse.ArgumentTypeError('minimum NPROC is 1')
+    if value > max_nproc:
+        raise argparse.ArgumentTypeError(f'maximum NPROC is {max_nproc}')
+
+    return value
 
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog="CroCoDeEL")
+    parser = argparse.ArgumentParser(prog="crocodeel")
 
     subparsers = parser.add_subparsers(
         title="positional arguments",
@@ -26,14 +44,22 @@ def get_arguments() -> argparse.Namespace:
         dest="species_abundance_table",
         type=argparse.FileType("r"),
         required=True,
-        help="TSV file giving the species abundance profiles in metagenomic samples.",
+        help="Input TSV file giving the species abundance profiles in metagenomic samples.",
+    )
+    search_conta_parser.add_argument(
+        "--nproc",
+        dest="nproc",
+        type=nproc,
+        default=multiprocessing.cpu_count(),
+        help="Number of parallel processes to search for contaminations "
+        "(default: %(default)d)",
     )
     search_conta_parser.add_argument(
         "-o",
-        dest="output_dir",
-        type=str,
+        dest="output_file",
+        type=argparse.FileType("w"),
         required=True,
-        help="Output directory where the results will be saved.",
+        help="Output TSV file listing all contaminations cases.",
     )
 
     plot_conta_parser = subparsers.add_parser(
@@ -60,33 +86,33 @@ def get_arguments() -> argparse.Namespace:
         "--nrow",
         dest="nrow",
         type=int,
-        choices=range(1,11),
+        choices=range(1, 11),
         default=4,
         metavar="NROW",
         help="Number of scatterplots to draw vertically on each page "
-        "(default: %(default)d)"
+        "(default: %(default)d)",
     )
     plot_conta_parser.add_argument(
         "--ncol",
         dest="ncol",
         type=int,
-        choices=range(1,11),
+        choices=range(1, 11),
         default=4,
         metavar="NCOL",
         help="Number of scatterplots to draw horizontally on each page "
-        "(default: %(default)d)"
+        "(default: %(default)d)",
     )
     plot_conta_parser.add_argument(
         "--no-conta-line",
         dest="no_conta_line",
-        action='store_true',
-        help="Do not show contamination line in scatterplots."
+        action="store_true",
+        help="Do not show contamination line in scatterplots.",
     )
     plot_conta_parser.add_argument(
         "--color-conta-species",
         dest="color_conta_species",
-        action='store_true',
-        help="Use a different color for species introduced by contamination."
+        action="store_true",
+        help="Use a different color for species introduced by contamination.",
     )
     plot_conta_parser.add_argument(
         "-o",
@@ -101,8 +127,23 @@ def get_arguments() -> argparse.Namespace:
 
 def main() -> None:
     args = get_arguments()
+    if args.command == "search_conta":
+        species_abundance_table = pd.read_csv(
+            args.species_abundance_table,
+            sep="\t",
+            header=0,
+            index_col=0,
+        )
+        args.species_abundance_table.close()
 
-    if args.command == "plot_conta":
+        contamination_cases = ContaminationSearcherDriver(
+            species_abundance_table,
+            nproc=args.nproc
+        ).search_contamination()
+        ContaminationCaseIO.write_tsv(contamination_cases, args.output_file)
+        args.output_file.close()
+
+    elif args.command == "plot_conta":
         species_abundance_table = pd.read_csv(
             args.species_abundance_table,
             sep="\t",
@@ -112,17 +153,17 @@ def main() -> None:
         args.species_abundance_table.close()
 
         contamination_cases = list(ContaminationCaseIO.read_tsv(args.crocodeel_results))
+        contamination_cases.sort(key=lambda c: (c.probability, c.rate), reverse=True)
         args.crocodeel_results.close()
 
-        report = ContaminationPlotsReport(
+        ContaminationPlotsReport(
             mgs_profiles=species_abundance_table,
             contamination_cases=contamination_cases,
             nrow=args.nrow,
             ncol=args.ncol,
             no_contamination_line=args.no_conta_line,
-            color_contamination_specific_species=args.color_conta_species
-        )
-        report.save_to_pdf(args.output_file)
+            color_contamination_specific_species=args.color_conta_species,
+        ).save_to_pdf(args.output_file)
         args.output_file.close()
 
 

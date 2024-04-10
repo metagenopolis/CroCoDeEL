@@ -1,5 +1,6 @@
 import os
 os.environ['OMP_NUM_THREADS'] = '1'
+from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 import argparse
@@ -13,6 +14,7 @@ from itertools import product
 import tqdm
 from multiprocessing import Pool
 from functools import partial
+from contamination_case import ContaminationCase
 
 class UnitSlopeRegression(LinearRegression):
     def fit(self, X, y):
@@ -26,7 +28,7 @@ class UnitSlopeRegression(LinearRegression):
     def score(self, X, y):
         return mean_squared_error(y, self.predict(X))
 
-class ContaminationSearcher:
+class ContaminationSearcherWorker:
     UPPER_LEFT_TRIANGLE_LIMIT = 2
     RESIDUAL_THRESHOLD = 0.2
     NUMBER_NEAREST_NEIGHBORS = 5
@@ -274,39 +276,52 @@ class ContaminationSearcher:
             inliers_indexes = np.empty((0, 0))
             return y_prediction, contamination_probability, contamination_rate, inliers_indexes
 
-    def classify_sample_pair(self, source, target):
+    def classify_sample_pair(self, sample_pair):
+        source, target = sample_pair
         y_prediction = 0
         contamination_probability = 0
         contamination_rate = 0
         inliers_indexes = np.empty((0, 0))
 
         if source == target:
-            return [y_prediction, target, source, contamination_probability, contamination_rate]
+            return ContaminationCase(source, target)
 
         not_filtered_data, common_species_upper_triangle, species_potentially_in_contamination_line, species_potentially_in_contamination_line_indexes, minimum_abundance_target_sample = self.select_species_potentially_in_contamination_line(source, target)
 
-        if common_species_upper_triangle.shape[0] > 5:
-            y_prediction, contamination_probability, contamination_rate, inliers_indexes = self.crocodeel(species_potentially_in_contamination_line,
+        if common_species_upper_triangle.shape[0] <= 5:
+            return ContaminationCase(source, target)
+
+        y_prediction, contamination_probability, contamination_rate, inliers_indexes = self.crocodeel(species_potentially_in_contamination_line,
                                                                                     species_potentially_in_contamination_line_indexes,
                                                                                     not_filtered_data,
                                                                                     minimum_abundance_target_sample)
-        # inliers_indexes_list = ",".join(map(str, inliers_indexes))
-        return [y_prediction, target, source, contamination_probability, contamination_rate]
+        return ContaminationCase(
+            source,
+            target,
+            rate=contamination_rate,
+            probability=contamination_probability,
+            contamination_specific_species=inliers_indexes.tolist(),
+        )
 
-    def _classify_sample_pair(self, args):
-        source, target = args
-        return self.classify_sample_pair(source, target)
+@dataclass
+class ContaminationSearcherDriver:
+    mgs_profiles: pd.DataFrame
+    nproc: int = field(default=1)
+    chunksize: int = field(default=50)
 
-    def classify_all_sample_pairs(self, num_processes=12):
+    def search_contamination(self):
         all_samples = self.mgs_profiles.columns
         all_sample_pairs = product(all_samples, repeat=2)
         num_sample_pairs = len(all_samples) ** 2
 
+        rf_classifier = joblib.load("/export/mgps/home/fplazaonate/crocodeel/crocodeel/models/crocodeel_last_version.joblib")
+        worker = ContaminationSearcherWorker(self.mgs_profiles,rf_classifier)
+
         all_contamination_cases = []
 
-        with Pool(processes=num_processes) as pool:
+        with Pool(processes=self.nproc) as pool:
             all_tasks = pool.imap_unordered(
-                self._classify_sample_pair, all_sample_pairs, chunksize=50
+                worker.classify_sample_pair, all_sample_pairs, chunksize=self.chunksize
             )
             pbar = partial(
                 tqdm.tqdm,
@@ -315,20 +330,7 @@ class ContaminationSearcher:
             )
 
             for contamination_case in pbar(all_tasks):
-                if contamination_case[0]:
+                if contamination_case.probability >= 0.5:
                     all_contamination_cases.append(contamination_case)
 
         return all_contamination_cases
-
-
-def main():
-    mgs_profiles = pd.read_csv("/export/mgps/home/fplazaonate/crocodeel/test/mgs_profiles_test.tsv" , sep='\t', header=0, index_col=0)
-    rf_classifier = joblib.load("/export/mgps/home/fplazaonate/crocodeel/crocodeel/models/crocodeel_last_version.joblib")
-
-    contamination_searcher = ContaminationSearcher(mgs_profiles,rf_classifier)
-    all_contamination_cases = contamination_searcher.classify_all_sample_pairs(num_processes=8)
-    print(all_contamination_cases)
-
-
-if __name__ == "__main__":
-    main()
