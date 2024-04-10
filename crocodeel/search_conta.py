@@ -1,11 +1,7 @@
 import os
-os.environ['OMP_NUM_THREADS'] = '1'
 from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
-import argparse
-import sys
-import joblib
 from sklearn.linear_model import RANSACRegressor, LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import NearestNeighbors
@@ -15,6 +11,9 @@ import tqdm
 from multiprocessing import Pool
 from functools import partial
 from contamination_case import ContaminationCase
+from rf_model import RandomForestModel
+
+os.environ['OMP_NUM_THREADS'] = '1'
 
 class UnitSlopeRegression(LinearRegression):
     def fit(self, X, y):
@@ -314,7 +313,7 @@ class ContaminationSearcherDriver:
         all_sample_pairs = product(all_samples, repeat=2)
         num_sample_pairs = len(all_samples) ** 2
 
-        rf_classifier = joblib.load("/export/mgps/home/fplazaonate/crocodeel/crocodeel/models/crocodeel_last_version.joblib")
+        rf_classifier = RandomForestModel.load()
         worker = ContaminationSearcherWorker(self.mgs_profiles,rf_classifier)
 
         all_contamination_cases = []
