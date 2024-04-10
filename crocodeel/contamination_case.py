@@ -27,7 +27,7 @@ class ContaminationCaseIO:
                 row["target"],
                 float(row["rate"]),
                 float(row["probability"]),
-                list(contamination_specific_species),
+                contamination_specific_species,
             )
 
     @staticmethod

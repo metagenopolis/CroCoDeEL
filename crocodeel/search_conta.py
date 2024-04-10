@@ -35,6 +35,8 @@ class ContaminationSearcherWorker:
 
     def __init__(self, mgs_profiles, rf_classifier):
         self.mgs_profiles = mgs_profiles.div(mgs_profiles.sum(axis=0), axis=1)
+        # Make sure that species names are strings
+        self.mgs_profiles.index = self.mgs_profiles.index.astype(str)
         self.rf_classifier = rf_classifier
 
     def get_number_of_points_in_upper_left_triangle(self, point, other_points):
@@ -295,7 +297,7 @@ class ContaminationSearcherWorker:
             target,
             rate=contamination_rate,
             probability=contamination_probability,
-            contamination_specific_species=map(str, inliers_indexes.tolist()),
+            contamination_specific_species=inliers_indexes.tolist(),
         )
 
 @dataclass

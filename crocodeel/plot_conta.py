@@ -29,6 +29,9 @@ class ContaminationPlotsReport:
             self.mgs_profiles = self.mgs_profiles.apply(np.log10)
         self.mgs_profiles.replace(-np.inf, self.pseudo_zero, inplace=True)
 
+        # Make sure that species names are strings
+        self.mgs_profiles.index = self.mgs_profiles.index.astype(str)
+
     def _create_plot(self, contamination_case: ContaminationCase, ax) -> None:
         spearman_rho = self.mgs_profiles[contamination_case.target].corr(
             self.mgs_profiles[contamination_case.source], method="spearman"
@@ -51,7 +54,7 @@ class ContaminationPlotsReport:
             edge_colors = [
                 (
                     "orange"
-                    if str(species) in contamination_case.contamination_specific_species
+                    if species in contamination_case.contamination_specific_species
                     else "black"
                 )
                 for species in self.mgs_profiles.index[non_zero_species]
