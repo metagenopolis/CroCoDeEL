@@ -4,7 +4,7 @@ from typing import TextIO, Iterator
 
 
 @dataclass
-class ContaminationCase:
+class ContaminationEvent:
     source: str
     target: str
     rate: float = field(default=0.0)
@@ -12,9 +12,9 @@ class ContaminationCase:
     contamination_specific_species: list[str] = field(default_factory=lambda: [])
 
 
-class ContaminationCaseIO:
+class ContaminationEventIO:
     @staticmethod
-    def read_tsv(fh: TextIO) -> Iterator[ContaminationCase]:
+    def read_tsv(fh: TextIO) -> Iterator[ContaminationEvent]:
         tsv_reader = csv.DictReader(fh, delimiter="\t")
 
         for row in tsv_reader:
@@ -22,7 +22,7 @@ class ContaminationCaseIO:
                 "contamination_specific_species"
             ].split(",")
 
-            yield ContaminationCase(
+            yield ContaminationEvent(
                 row["source"],
                 row["target"],
                 float(row["rate"]),
@@ -31,7 +31,7 @@ class ContaminationCaseIO:
             )
 
     @staticmethod
-    def write_tsv(contamination_cases: list[ContaminationCase], fh: TextIO) -> None:
+    def write_tsv(conta_events: list[ContaminationEvent], fh: TextIO) -> None:
         # Write header
         print(
             "\t".join(
@@ -46,16 +46,16 @@ class ContaminationCaseIO:
             file=fh,
         )
 
-        # Write each case
-        for contamination_case in contamination_cases:
+        # Write each events
+        for conta_event in conta_events:
             print(
                 "\t".join(
                     [
-                        contamination_case.source,
-                        contamination_case.target,
-                        str(contamination_case.rate),
-                        str(contamination_case.probability),
-                        ",".join(contamination_case.contamination_specific_species),
+                        conta_event.source,
+                        conta_event.target,
+                        str(conta_event.rate),
+                        str(conta_event.probability),
+                        ",".join(conta_event.contamination_specific_species),
                     ]
                 ),
                 file=fh,

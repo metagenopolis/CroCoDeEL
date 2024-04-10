@@ -6,13 +6,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import tqdm
-from contamination_case import ContaminationCase
+from conta_event import ContaminationEvent
 
 
 @dataclass
 class ContaminationPlotsReport:
     mgs_profiles: pd.DataFrame
-    contamination_cases: list[ContaminationCase]
+    conta_events: list[ContaminationEvent]
     nrow: int = field(default=4)
     ncol: int = field(default=4)
     no_contamination_line: bool = field(default=False)
@@ -32,20 +32,20 @@ class ContaminationPlotsReport:
         # Make sure that species names are strings
         self.mgs_profiles.index = self.mgs_profiles.index.astype(str)
 
-    def _create_plot(self, contamination_case: ContaminationCase, ax) -> None:
-        spearman_rho = self.mgs_profiles[contamination_case.target].corr(
-            self.mgs_profiles[contamination_case.source], method="spearman"
+    def _create_plot(self, conta_event: ContaminationEvent, ax) -> None:
+        spearman_rho = self.mgs_profiles[conta_event.target].corr(
+            self.mgs_profiles[conta_event.source], method="spearman"
         )
 
         # Do not show species absent in both samples
         # for faster rendering and reduce PDF file size
         non_zero_species = (
-            self.mgs_profiles[contamination_case.target] > self.pseudo_zero
-        ) | (self.mgs_profiles[contamination_case.source] > self.pseudo_zero)
+            self.mgs_profiles[conta_event.target] > self.pseudo_zero
+        ) | (self.mgs_profiles[conta_event.source] > self.pseudo_zero)
 
         scatterplot = ax.scatter(
-            x=self.mgs_profiles.loc[non_zero_species, contamination_case.target],
-            y=self.mgs_profiles.loc[non_zero_species, contamination_case.source],
+            x=self.mgs_profiles.loc[non_zero_species, conta_event.target],
+            y=self.mgs_profiles.loc[non_zero_species, conta_event.source],
             s=10,
             facecolor="none",
         )
@@ -54,7 +54,7 @@ class ContaminationPlotsReport:
             edge_colors = [
                 (
                     "orange"
-                    if species in contamination_case.contamination_specific_species
+                    if species in conta_event.contamination_specific_species
                     else "black"
                 )
                 for species in self.mgs_profiles.index[non_zero_species]
@@ -77,7 +77,7 @@ class ContaminationPlotsReport:
             ax.axline(
                 (
                     self.pseudo_zero,
-                    self.pseudo_zero - np.log10(contamination_case.rate),
+                    self.pseudo_zero - np.log10(conta_event.rate),
                 ),
                 slope=1,
                 color="red",
@@ -98,19 +98,19 @@ class ContaminationPlotsReport:
         ax.set_xticklabels(ticks_labels)
         ax.set_yticklabels(ticks_labels)
 
-        ax.set_xlabel(contamination_case.target)
-        ax.set_ylabel(contamination_case.source)
+        ax.set_xlabel(conta_event.target)
+        ax.set_ylabel(conta_event.source)
 
         ax.set_title(
-            f"prob = {contamination_case.probability}, "
-            f"rate = {round(contamination_case.rate * 100, 2)}%, "
+            f"prob = {conta_event.probability}, "
+            f"rate = {round(conta_event.rate * 100, 2)}%, "
             f"rho = {round(spearman_rho, 2)}"
         )
 
     def save_to_pdf(self, pdf_fh: BinaryIO) -> None:
         num_plots_per_page = self.nrow * self.ncol
         num_pages = int(
-            np.ceil(float(len(self.contamination_cases) / num_plots_per_page))
+            np.ceil(float(len(self.conta_events) / num_plots_per_page))
         )
 
         with PdfPages(pdf_fh) as pdf:
@@ -127,9 +127,9 @@ class ContaminationPlotsReport:
                 axs = axs.flatten()
                 for plot_id in range(num_plots_per_page):
                     global_plot_id = (page * num_plots_per_page) + plot_id
-                    if global_plot_id < len(self.contamination_cases):
+                    if global_plot_id < len(self.conta_events):
                         self._create_plot(
-                            self.contamination_cases[global_plot_id], axs[plot_id]
+                            self.conta_events[global_plot_id], axs[plot_id]
                         )
                     else:
                         axs[plot_id].axis("off")

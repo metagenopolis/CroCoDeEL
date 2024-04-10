@@ -11,7 +11,7 @@ from sklearn.linear_model import RANSACRegressor, LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import NearestNeighbors
 from scipy.stats import spearmanr
-from contamination_case import ContaminationCase
+from conta_event import ContaminationEvent
 from rf_model import RandomForestModel
 
 class UnitSlopeRegression(LinearRegression):
@@ -281,18 +281,18 @@ class ContaminationSearcherWorker:
         inliers_indexes = np.empty((0, 0))
 
         if source == target:
-            return ContaminationCase(source, target)
+            return ContaminationEvent(source, target)
 
         not_filtered_data, common_species_upper_triangle, species_potentially_in_contamination_line, species_potentially_in_contamination_line_indexes, minimum_abundance_target_sample = self.select_species_potentially_in_contamination_line(source, target)
 
         if common_species_upper_triangle.shape[0] <= 5:
-            return ContaminationCase(source, target)
+            return ContaminationEvent(source, target)
 
         _, contamination_probability, contamination_rate, inliers_indexes = self.crocodeel(species_potentially_in_contamination_line,
                                                                                     species_potentially_in_contamination_line_indexes,
                                                                                     not_filtered_data,
                                                                                     minimum_abundance_target_sample)
-        return ContaminationCase(
+        return ContaminationEvent(
             source,
             target,
             rate=contamination_rate,
@@ -314,7 +314,7 @@ class ContaminationSearcherDriver:
         rf_classifier = RandomForestModel.load()
         worker = ContaminationSearcherWorker(self.mgs_profiles,rf_classifier)
 
-        all_contamination_cases = []
+        all_conta_events = []
 
         with Pool(processes=self.nproc) as pool:
             all_tasks = pool.imap_unordered(
@@ -326,8 +326,8 @@ class ContaminationSearcherDriver:
                 bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} sample pairs inspected",
             )
 
-            for contamination_case in pbar(all_tasks):
-                if contamination_case.probability >= 0.5:
-                    all_contamination_cases.append(contamination_case)
+            for conta_event in pbar(all_tasks):
+                if conta_event.probability >= 0.5:
+                    all_conta_events.append(conta_event)
 
-        return all_contamination_cases
+        return all_conta_events
