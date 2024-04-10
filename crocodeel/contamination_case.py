@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import csv
-from typing import TextIO
+from typing import TextIO, Iterator
 
 
 @dataclass
@@ -14,7 +14,7 @@ class ContaminationCase:
 
 class ContaminationCaseIO:
     @staticmethod
-    def read_tsv(fh: TextIO):
+    def read_tsv(fh: TextIO) -> Iterator[ContaminationCase]:
         tsv_reader = csv.DictReader(fh, delimiter="\t")
 
         for row in tsv_reader:
