@@ -32,6 +32,7 @@ class ContaminationSearcherWorker:
     NUMBER_NEAREST_NEIGHBORS = 5
     NUMBER_FARTHEST_NEIGHBORS = 5
     NUMBER_SPECIFIC_SPECIES_TO_CONSIDER = 10
+    PROBABILITY_CUTOFF = 0.5
 
     def __init__(self, mgs_profiles, rf_classifier):
         self.mgs_profiles = mgs_profiles.div(mgs_profiles.sum(axis=0), axis=1)
@@ -41,45 +42,38 @@ class ContaminationSearcherWorker:
 
     def get_number_of_points_in_upper_left_triangle(self, point, other_points):
         """Return the number of points present in the upper left triangle of a point."""
-        number_of_points_in_upper_left_triangle = 0
-        for other_point in other_points:
-            if other_point[0] <= point[0] and other_point[1] >= point[1]:
-                number_of_points_in_upper_left_triangle += 1
-        return number_of_points_in_upper_left_triangle
+        number_of_points_in_upper_left_triangle = np.sum((other_points[:, 0] <= point[0]) & (other_points[:, 1] >= point[1]))
+        return number_of_points_in_upper_left_triangle-1
 
-    def is_potentially_in_contamination_line(self, point, other_points, limit):
+    def is_potentially_in_contamination_line(self, point, other_points):
         """Return if the point is potentially in the contamination line or not."""
         number_of_points_in_upper_left_triangle = self.get_number_of_points_in_upper_left_triangle(point, other_points)
-        return number_of_points_in_upper_left_triangle <= limit
+        return number_of_points_in_upper_left_triangle <= self.UPPER_LEFT_TRIANGLE_LIMIT
 
-    def select_species_potentially_in_contamination_line(self, source_sample_name, target_sample_name, limit=UPPER_LEFT_TRIANGLE_LIMIT):
+    def select_species_potentially_in_contamination_line(self, source_sample_name, target_sample_name):
         """Return """
-        source_sample = self.mgs_profiles.loc[:, source_sample_name]
-        target_sample = self.mgs_profiles.loc[:, target_sample_name]
-        data = pd.concat([target_sample, source_sample], axis=1)
-        minimum_abundance_target_sample = data[data[target_sample_name] != 0][target_sample_name].min()
+        
+        # Select all species or only those in upper triangle
+        not_filtered_data = self.mgs_profiles[[target_sample_name, source_sample_name]]
+        common_species_upper_triangle = (not_filtered_data[source_sample_name] >= not_filtered_data[target_sample_name]) & (not_filtered_data[target_sample_name] != 0)
+        minimum_abundance_target_sample = not_filtered_data[not_filtered_data[target_sample_name] != 0][target_sample_name].min()
 
-        # Not filtered data, log
-        not_filtered_data = data.replace(0, minimum_abundance_target_sample/10)
-        not_filtered_data = np.log10(not_filtered_data)
-        not_filtered_data = np.hstack([not_filtered_data[target_sample_name], not_filtered_data[source_sample_name]]).reshape(2,-1).T
+        # log10 transform
+        not_filtered_data = not_filtered_data.replace(0, minimum_abundance_target_sample/10)
+        not_filtered_data = not_filtered_data.apply(np.log10)
 
-        # Filtered data, only common species in the upper triangle, log
-        common_species_upper_triangle_df = data[(data[source_sample_name] != 0) & (data[target_sample_name] != 0)]
-        common_species_upper_triangle_df = common_species_upper_triangle_df[common_species_upper_triangle_df[source_sample_name] >= common_species_upper_triangle_df[target_sample_name]]
-        common_species_upper_triangle_df = common_species_upper_triangle_df.replace(0, minimum_abundance_target_sample/10)
-        common_species_upper_triangle_df = np.log10(common_species_upper_triangle_df)
-        common_species_upper_triangle = np.hstack([common_species_upper_triangle_df[target_sample_name], common_species_upper_triangle_df[source_sample_name]]).reshape(2,-1).T
+        # convert to numpy array
+        common_species_upper_triangle_df= not_filtered_data[common_species_upper_triangle]
+        not_filtered_data = not_filtered_data.to_numpy()
+        common_species_upper_triangle = common_species_upper_triangle_df.to_numpy()
 
-        # Filtered data, only species potentially in the contamination line, log
+        # search species potentially in the contamination line
         species_potentially_in_contamination_line = []
-        species_potentially_in_contamination_line_indexes = []
-        for i, point in enumerate(common_species_upper_triangle):
-            other_points = np.delete(common_species_upper_triangle, i, axis=0)
-            if self.is_potentially_in_contamination_line(point, other_points, limit):
-                species_potentially_in_contamination_line.append(point)
-                species_potentially_in_contamination_line_indexes.append(common_species_upper_triangle_df.index[i])
-        species_potentially_in_contamination_line = np.array(species_potentially_in_contamination_line)
+        for species_id, point in enumerate(common_species_upper_triangle):
+            if self.is_potentially_in_contamination_line(point, common_species_upper_triangle):
+                species_potentially_in_contamination_line.append(species_id)
+        species_potentially_in_contamination_line_indexes = common_species_upper_triangle_df.index[species_potentially_in_contamination_line]
+        species_potentially_in_contamination_line = common_species_upper_triangle[species_potentially_in_contamination_line]
 
         return not_filtered_data, common_species_upper_triangle, species_potentially_in_contamination_line, species_potentially_in_contamination_line_indexes, minimum_abundance_target_sample
 
@@ -98,9 +92,9 @@ class ContaminationSearcherWorker:
             outliers = np.logical_not(inliers)
             _, intercept = ransac.estimator_.coeffs
 
-            species_inliers = np.vstack([X[inliers], y[inliers]]).reshape(2,-1).T
+            species_inliers = np.hstack([X[inliers], y[inliers]])
             species_inliers_indexes = X_indexes[inliers]
-            species_outliers = np.vstack([X[outliers], y[outliers]]).reshape(2,-1).T
+            species_outliers = np.hstack([X[outliers], y[outliers]])
             species_outliers_indexes = X_indexes[outliers]
 
         except ValueError:
@@ -236,44 +230,29 @@ class ContaminationSearcherWorker:
         intercept) = self.get_coefficients_of_potential_contamination_line(
             species_potentially_in_contamination_line, species_potentially_in_contamination_line_indexes)
 
-        if species_potentially_in_contamination_line_inliers.shape[0] != 0:
-            X = np.array([self.get_metrics(
-                intercept,
-                species_potentially_in_contamination_line_inliers,
-                not_filtered_data,
-                minimum_abundance_target_sample)])
-            y_prediction = self.rf_classifier.predict(X)[0]
-            probabilities =self.rf_classifier.predict_proba(X)
-            contamination_probability = probabilities[:, 1][0]
-
-            if y_prediction == 1 :
-                contamination_rate = np.round(10**(-intercept), 4)
-                if species_potentially_in_contamination_line_inliers.shape[0] < 5: # Predicted as contaminated but not enough species in the contamination line
-                    y_prediction = 0
-                    contamination_rate = 0
-                    contamination_probability = 0
-                    inliers_indexes = np.empty((0, 0))
-
-                return y_prediction, contamination_probability, contamination_rate, inliers_indexes
-
-            else :
-                if species_potentially_in_contamination_line_outliers.shape[0] >= 5:
-                    return self.crocodeel(species_potentially_in_contamination_line_outliers,
-                                    outliers_indexes,
-                                    not_filtered_data,
-                                    minimum_abundance_target_sample)
-                else:
-                    contamination_probability = 0
-                    contamination_rate = 0
-                    inliers_indexes = np.empty((0, 0))
-                    return y_prediction, contamination_probability, contamination_rate, inliers_indexes
-        else:
-            y_prediction = 0
-            contamination_probability = 0
+        # Not enough species in the contamination line
+        if species_potentially_in_contamination_line_inliers.shape[0] < 5:
             contamination_rate = 0
+            contamination_probability = 0
             inliers_indexes = np.empty((0, 0))
-            return y_prediction, contamination_probability, contamination_rate, inliers_indexes
 
+            return contamination_probability, contamination_rate, inliers_indexes
+
+        X = np.array([self.get_metrics(
+            intercept,
+            species_potentially_in_contamination_line_inliers,
+            not_filtered_data,
+            minimum_abundance_target_sample)])
+        contamination_probability = self.rf_classifier.predict_proba(X)[0,1]
+
+        if contamination_probability >= self.PROBABILITY_CUTOFF:
+            contamination_rate = np.round(10**(-intercept), 4)
+            return contamination_probability, contamination_rate, inliers_indexes
+        else:
+            return self.crocodeel(species_potentially_in_contamination_line_outliers,outliers_indexes,
+                            not_filtered_data,
+                            minimum_abundance_target_sample)
+    
     def classify_sample_pair(self, sample_pair):
         source, target = sample_pair
         contamination_probability = 0
@@ -288,7 +267,7 @@ class ContaminationSearcherWorker:
         if common_species_upper_triangle.shape[0] <= 5:
             return ContaminationEvent(source, target)
 
-        _, contamination_probability, contamination_rate, inliers_indexes = self.crocodeel(species_potentially_in_contamination_line,
+        contamination_probability, contamination_rate, inliers_indexes = self.crocodeel(species_potentially_in_contamination_line,
                                                                                     species_potentially_in_contamination_line_indexes,
                                                                                     not_filtered_data,
                                                                                     minimum_abundance_target_sample)
@@ -327,7 +306,7 @@ class ContaminationSearcherDriver:
             )
 
             for conta_event in pbar(all_tasks):
-                if conta_event.probability >= 0.5:
+                if conta_event.probability >= ContaminationSearcherWorker.PROBABILITY_CUTOFF:
                     all_conta_events.append(conta_event)
 
         return all_conta_events
