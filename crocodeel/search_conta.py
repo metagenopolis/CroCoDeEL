@@ -146,23 +146,21 @@ class ContaminationSearcherWorker:
 
     def get_coefficients_of_potential_contamination_line(self, species_potentially_in_contamination_line, species_potentially_in_contamination_line_indexes):
         """ """
-        X = species_potentially_in_contamination_line[:,0].reshape(-1, 1)
-        y = species_potentially_in_contamination_line[:,1].reshape(-1, 1)
-
-        X_indexes = np.array(species_potentially_in_contamination_line_indexes)
-
         try:
             ransac = RANSACRegressor(estimator=UnitSlopeRegression(), random_state=42, residual_threshold=self.RESIDUAL_THRESHOLD)
-            ransac.fit(X, y)
+            ransac.fit(
+                species_potentially_in_contamination_line[:, [0]],
+                species_potentially_in_contamination_line[:, [1]],
+            )
 
             inliers = ransac.inlier_mask_
             outliers = np.logical_not(inliers)
-            _, intercept = ransac.estimator_.coeffs
+            intercept = ransac.estimator_.coeffs[1]
 
-            species_inliers = np.hstack([X[inliers], y[inliers]])
-            species_inliers_indexes = X_indexes[inliers]
-            species_outliers = np.hstack([X[outliers], y[outliers]])
-            species_outliers_indexes = X_indexes[outliers]
+            species_inliers = species_potentially_in_contamination_line[inliers]
+            species_inliers_indexes = species_potentially_in_contamination_line_indexes[inliers]
+            species_outliers = species_potentially_in_contamination_line[outliers]
+            species_outliers_indexes = species_potentially_in_contamination_line_indexes[outliers]
 
         except ValueError:
             species_inliers, species_outliers, species_inliers_indexes, species_outliers_indexes, intercept = (
@@ -222,9 +220,10 @@ class ContaminationSearcherWorker:
         ) & (not_filtered_data[target_sample_name] != -np.inf)
 
         # convert to numpy array
-        common_species_upper_triangle_df = not_filtered_data[common_species_upper_triangle]
+        common_species_upper_triangle = not_filtered_data[common_species_upper_triangle]
+        common_species_upper_triangle_indexes = common_species_upper_triangle.index.values
         not_filtered_data = not_filtered_data.to_numpy()
-        common_species_upper_triangle = common_species_upper_triangle_df.to_numpy()
+        common_species_upper_triangle = common_species_upper_triangle.to_numpy()
 
         # search species potentially in the contamination line
         species_potentially_in_contamination_line = []
@@ -232,10 +231,10 @@ class ContaminationSearcherWorker:
             number_of_points_in_upper_left_triangle = np.sum(
                 (common_species_upper_triangle[:, 0] <= point[0]) & (common_species_upper_triangle[:, 1] >= point[1])
             )
-            number_of_points_in_upper_left_triangle = number_of_points_in_upper_left_triangle - 1
+            number_of_points_in_upper_left_triangle -= 1
             if number_of_points_in_upper_left_triangle <= self.UPPER_LEFT_TRIANGLE_LIMIT:
                 species_potentially_in_contamination_line.append(species_id)
-        species_potentially_in_contamination_line_indexes = common_species_upper_triangle_df.index[species_potentially_in_contamination_line]
+        species_potentially_in_contamination_line_indexes = common_species_upper_triangle_indexes[species_potentially_in_contamination_line]
         species_potentially_in_contamination_line = common_species_upper_triangle[species_potentially_in_contamination_line]
 
         return (
