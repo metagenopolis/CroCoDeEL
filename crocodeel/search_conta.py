@@ -159,7 +159,7 @@ class ContaminationSearcherWorker:
             intercept = ransac.estimator_.coeffs[1]
 
         except ValueError:
-            species_inliers, intercept = np.empty((0, 0)), 0
+            species_inliers, intercept = np.empty(0), 0
 
         return species_inliers, intercept
 
@@ -178,8 +178,7 @@ class ContaminationSearcherWorker:
         if np.sum(species_inliers) < 5:
             contamination_rate = 0
             contamination_probability = 0
-            species_inliers_indexes = np.empty((0, 0))
-
+            species_inliers_indexes = np.empty(0)
             return contamination_probability, contamination_rate, species_inliers_indexes
 
         species_outliers = np.logical_not(species_inliers)
