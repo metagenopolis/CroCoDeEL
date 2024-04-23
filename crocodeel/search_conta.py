@@ -98,7 +98,7 @@ class ContaminationSearcherWorker:
         #
         number_of_species_in_contamination_line = species_potentially_in_contamination_line_inliers.shape[0]
         ratio_species_in_contamination_line_to_shared_species = number_of_species_in_contamination_line/number_of_shared_species
-        number_of_species_above_line = sum(shared_species[:,1] > shared_species[:,0] + intercept + 0.2)
+        number_of_species_above_line = np.sum(shared_species[:,1] > shared_species[:,0] + intercept + 0.2)
         ratio_species_above_line_to_shared_species = number_of_species_above_line/number_of_shared_species
 
         #
@@ -144,72 +144,63 @@ class ContaminationSearcherWorker:
                 distance_between_mean_abundance_of_specific_species_and_contamination_line2,
             )
 
-    def get_coefficients_of_potential_contamination_line(self, species_potentially_in_contamination_line, species_potentially_in_contamination_line_indexes):
+    def get_coefficients_of_potential_contamination_line(self, species_potentially_in_contamination_line):
         """ """
         try:
-            ransac = RANSACRegressor(estimator=UnitSlopeRegression(), random_state=42, residual_threshold=self.RESIDUAL_THRESHOLD)
+            ransac = RANSACRegressor(
+                estimator=UnitSlopeRegression(), random_state=42, residual_threshold=self.RESIDUAL_THRESHOLD
+            )
             ransac.fit(
                 species_potentially_in_contamination_line[:, [0]],
                 species_potentially_in_contamination_line[:, [1]],
             )
 
-            inliers = ransac.inlier_mask_
-            outliers = np.logical_not(inliers)
+            species_inliers = ransac.inlier_mask_
             intercept = ransac.estimator_.coeffs[1]
 
-            species_inliers = species_potentially_in_contamination_line[inliers]
-            species_inliers_indexes = species_potentially_in_contamination_line_indexes[inliers]
-            species_outliers = species_potentially_in_contamination_line[outliers]
-            species_outliers_indexes = species_potentially_in_contamination_line_indexes[outliers]
-
         except ValueError:
-            species_inliers, species_outliers, species_inliers_indexes, species_outliers_indexes, intercept = (
-                np.empty((0, 0)),
-                np.empty((0, 0)),
-                np.empty((0, 0)),
-                np.empty((0, 0)),
-                0,
-            )
+            species_inliers, intercept = np.empty((0, 0)), 0
 
-        return species_inliers, species_outliers, species_inliers_indexes, species_outliers_indexes, intercept
+        return species_inliers, intercept
 
     def crocodeel(
         self,
         species_potentially_in_contamination_line,
         species_potentially_in_contamination_line_indexes,
-        not_filtered_data
+        not_filtered_data,
     ):
-        (
-            species_potentially_in_contamination_line_inliers,
-            species_potentially_in_contamination_line_outliers,
-            inliers_indexes,
-            outliers_indexes,
-            intercept,
-        ) = self.get_coefficients_of_potential_contamination_line(
-            species_potentially_in_contamination_line, species_potentially_in_contamination_line_indexes
+
+        species_inliers, intercept = self.get_coefficients_of_potential_contamination_line(
+            species_potentially_in_contamination_line
         )
 
         # Not enough species in the contamination line
-        if species_potentially_in_contamination_line_inliers.shape[0] < 5:
+        if np.sum(species_inliers) < 5:
             contamination_rate = 0
             contamination_probability = 0
-            inliers_indexes = np.empty((0, 0))
+            species_inliers_indexes = np.empty((0, 0))
 
-            return contamination_probability, contamination_rate, inliers_indexes
+            return contamination_probability, contamination_rate, species_inliers_indexes
+
+        species_outliers = np.logical_not(species_inliers)
+        species_inliers_indexes = species_potentially_in_contamination_line_indexes[species_inliers]
+        species_outliers_indexes = species_potentially_in_contamination_line_indexes[species_outliers]
+        species_inliers = species_potentially_in_contamination_line[species_inliers]
+        species_outliers = species_potentially_in_contamination_line[species_outliers]
 
         features = self.compute_features(
-            intercept, species_potentially_in_contamination_line_inliers, not_filtered_data
+            intercept, species_inliers, not_filtered_data
         )
         features = np.array([features])
         contamination_probability = self.rf_classifier.predict_proba(features)[0, 1]
 
         if contamination_probability < self.PROBABILITY_CUTOFF:
             return self.crocodeel(
-                species_potentially_in_contamination_line_outliers, outliers_indexes, not_filtered_data
+                species_outliers, species_outliers_indexes, not_filtered_data
             )
 
         contamination_rate = np.round(10 ** (-intercept), 4)
-        return contamination_probability, contamination_rate, inliers_indexes
+        return contamination_probability, contamination_rate, species_inliers_indexes
 
     def select_species_potentially_in_contamination_line(self, source_sample_name, target_sample_name):
         """Return"""
