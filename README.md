@@ -66,7 +66,7 @@ Each scatterplot compares in a log-scale the species abundance profiles of a con
 The contamination line (in red) highlights species specifically introduced by contamination.
 
 ### Results interpretation
-CroCoDeEL will probably report false contamination events for sample with similar species abundances profiles (e.g. longitudinal data, animals raised together).\
+CroCoDeEL will probably report false contamination events for samples with similar species abundances profiles (e.g. longitudinal data, animals raised together).\
 For non-related samples, CroCoDeEL may occasionally generate false positives that can be filtered out by a human-expert.\
 Thus, we strongly recommend inspecting scatterplots of each contamination event to discard potential false positives.\
 _We will explain how to do it soon._
