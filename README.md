@@ -2,89 +2,74 @@
 
 ## Introduction
 
-Metagenomic sequencing offers valuable insights into microbial ecosystems. However, one of the big issues in metagenomics is cross-sample contamination. This occurs when microbial content from samples processed together gets mixed, potentially leading to misleading conclusions.
-
-We introduce here a tool called CroCoDeEL to detect the specific patterns indicative of cross-sample contamination. This method accurately identifies not only the contaminated samples but also pinpoints their contamination sources and their rates.
+CroCoDeEL is a tool that detects cross-sample contamination in shotgun metagenomic data.\
+It accurately identifies contaminated samples but also pinpoints contamination sources and estimates contamination rates.
 
 ## Installation
 
-To install CroCoDeEL using Conda, execute the command:
+CroCoDeEL can be easily installed with conda.
 
+First, clone the git repository in a local directory:
 ```
-conda env create -p CroCoDeEL_env --file conda_env/environment.yml
-```
-
-Then, activate the environment using the following command: 
-
-```
-conda activate ./CroCoDeEL_env
+git clone https://forgemia.inra.fr/metagenopolis/crocodeel.git
+cd crocodeel
 ```
 
-_CroCoDeEL will be released on Bioconda soon._
-
-## Usage
-
-To run CroCoDeEL, use the following command:
-
+Then, create a specific conda environment with all requirements:
 ```
-nextflow run main.nf -w <temporary_file_path> \
---mgsProfilesPath <mgs_profiles> \
---outputDirectoryPath <output_directory_path>
+conda env create -p crocodeel_env --file conda_env/environment.yml
 ```
 
-You can add information about the samples plates or information about the samples, particularly if they are longitudinal.
+Then, activate the environment and run CroCoDeEL: 
 
 ```
-nextflow run main.nf -w <temporary_file_path> \
---mgsProfilesPath <mgs_profiles_path> \
---outputDirectoryPath <output_directory_path>  \
---plateMapPath  <plate_map_path> \
---longitudinalMetadataPath <longitudinal_metadata_path>
+conda activate crocodeel_env
+python3 crocodeel/crocodeel.py -h
 ```
 
-### 1. Abundance table of MGS
-____________________
+_CroCoDeEL will be released on bioconda soon._
 
-<center>
+## Quick start
+### Input
+CroCoDeEL takes as input a species abundance table in TSV format.\
+The first column should correspond to species names. The other columns correspond to the abundance of species in each sample.
 
-|   id_mgs  | sample 1 | sample 2 | sample 3 |    ...   | 
-|:----------|:--------:|:--------:|:--------:|:--------:| 
-| species 1 |     0    |  7.6e-07 |     0    |    ...   | 
-| species 2 |  1.8e-06 | 1.42e-06 |     0    |    ...   | 
-|    ...    |    ...   |    ...   |    ...   |    ...   | 
+|   species_name  | sample1 | sample2 | sample3 |    ...   | 
+|:----------------|:-------:|:-------:|:-------:|:--------:| 
+| species 1       |   0     |  0.05   |   0.07  |    ...   | 
+| species 2       |   0.1   |  0.01   |   0     |    ...   | 
+|       ...       |   ...   |   ...   |   ...   |    ...   | 
 
-</center>
+CroCoDeEL works with relative abundances.
+The table will automatically be normalized so the abundance of each column equals 1.
 
-### 2. Plate map (optional)
-____________________
+**Important**: CroCoDeEL requires the abundance of subdominant species to be accurately estimated.\
+We strongly recommend using [the Meteor software suite](https://github.com/metagenopolis/meteor) to generate the species abundance table.\
+Otherwise, you can use [sylph](https://github.com/bluenote-1577/sylph).\
+We strongly advise against the use of other taxonomic profilers such as MetaPhlan4, mOTUs, singlem, kmcp or kraken2.
 
-<center>
+### Search contamination
+Run the following command to search for cross-sample contamination:
+```
+python3 crocodeel/crocodeel.py search_conta -s species_abundance.tsv -o contamination_events.tsv
+```
+CroCoDeEL will report all detected contamination events in the _contamination_events.tsv_ output file.\
+This TSV file reports for each event the contamination source, the contaminated sample (target) and the estimated contamination rate.\
+The score (probability) computed by the Random Forest model as well as species specifically introduced by contamination in the target are also given.
 
-| samples  |  plate  | 
-|:---------|:-------:|
-| sample 1 |  plate1 | 
-| sample 1 |  plate2 |
-| sample 2 |  plate1 |
-| sample 3 |  plate2 |
-|   ...    |   ...   | 
+### Visualization of the results
+Contaminations events can be visually inspected by generating a PDF file consisting in scatterplots.
+```
+python3 crocodeel/crocodeel.py plot_conta -s species_abundance.tsv -c contamination_events.tsv -o contamination_events.pdf
+```
+Each scatterplot compares in a log-scale the species abundance profiles of a contaminated sample (x-axis) and its contamination source (y-axis).\
+The contamination line (in red) highlights species specifically introduced by contamination.
 
-</center>
-
-### 3. Metadata of longitudinal samples (optional)
-____________________
-
-<center>
-
-| samples  |  individual  | 
-|:---------|:------------:|
-| sample 1 |  individual1 | 
-| sample 2 |  individual2 |
-| sample 3 |  individual1 |
-|   ...    |      ...     | 
-
-</center>
-
-## Citation
+### Results interpretation
+CroCoDeEL will probably report false contamination events for sample with similar species abundances profiles (e.g. longitudinal data, animals raised together).\
+For non-related samples, CroCoDeEL may occasionally generate false positives that can be filtered out by a human-expert.\
+Thus, we strongly recommend inspecting scatterplots of each contamination event to discard potential false positives.\
+_We will explain how to do it soon._
 
 ## Authors
 * Lindsay Goulet: lindsay.goulet@inrae.fr
