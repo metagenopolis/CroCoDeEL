@@ -152,6 +152,13 @@ def main() -> None:
         logging.info("Contamination events sorted by decreasing contamination rate saved in %s", args.output_file.name)
         args.output_file.close()
 
+        logging.warning("Contamination events may be false positives, "
+                        "especially when dealing with samples with similar species abundance profiles "
+                        "(longitudinal data, animals raised together)")
+        logging.warning("Run the plot_conta subcommand to visualize "
+                        "and check each reported contamination event")
+        
+
     elif args.command == "plot_conta":
         species_ab_table = load_species_ab_table(args.species_ab_table)
         args.species_ab_table.close()
