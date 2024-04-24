@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import tqdm
+import logging
+from time import perf_counter
 from conta_event import ContaminationEvent
 
 
@@ -105,7 +107,8 @@ class ContaminationPlotsReport:
         num_pages = int(
             np.ceil(float(len(self.conta_events) / num_plots_per_page))
         )
-
+        start = perf_counter()
+        logging.info("Generation of the PDF report started")
         with PdfPages(pdf_fh) as pdf:
             pbar = partial(
                 tqdm.tqdm,
@@ -129,3 +132,4 @@ class ContaminationPlotsReport:
                 plt.tight_layout()
                 fig.savefig(pdf, format="pdf")
                 plt.close(fig)
+        logging.info("Generation completed in %.1f seconds", np.round(perf_counter() - start, 1))

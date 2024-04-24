@@ -156,7 +156,7 @@ def main() -> None:
                         "especially when dealing with samples with similar species abundance profiles "
                         "(longitudinal data, animals raised together)")
         logging.warning("Run the plot_conta subcommand to visualize "
-                        "and check each reported contamination event")
+                        "and check each reported contamination events")
         
 
     elif args.command == "plot_conta":
@@ -165,6 +165,7 @@ def main() -> None:
 
         conta_events = list(ContaminationEventIO.read_tsv(args.crocodeel_results))
         args.crocodeel_results.close()
+        logging.info("%d contamination events loaded", len(conta_events))
 
         ContaminationPlotsReport(
             species_ab_table=species_ab_table,
@@ -174,6 +175,7 @@ def main() -> None:
             no_contamination_line=args.no_conta_line,
             color_contamination_specific_species=args.color_conta_species,
         ).save_to_pdf(args.output_file)
+        logging.info("PDF report saved in %s", args.output_file.name)
         args.output_file.close()
 
 
