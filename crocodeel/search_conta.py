@@ -7,6 +7,8 @@ from itertools import product
 import numpy as np
 import pandas as pd
 import tqdm
+import logging
+from time import perf_counter
 from sklearn.linear_model import RANSACRegressor, LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import NearestNeighbors
@@ -279,9 +281,11 @@ class ContaminationSearcherDriver:
                 total=num_sample_pairs,
                 bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} sample pairs inspected",
             )
-
+            start = perf_counter()
+            logging.info("Search for contaminations started")
             for conta_event in pbar(all_tasks):
                 if conta_event.probability >= ContaminationSearcherWorker.PROBABILITY_CUTOFF:
                     all_conta_events.append(conta_event)
+            logging.info("Search completed in %.1f seconds", np.round(perf_counter() - start, 1))
 
         return all_conta_events

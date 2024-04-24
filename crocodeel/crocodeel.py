@@ -143,8 +143,13 @@ def main() -> None:
             species_ab_table,
             nproc=args.nproc
         ).search_contamination()
-        conta_events.sort(key=lambda e: (e.rate, e.probability), reverse=True)
+        contaminated_samples = {conta_event.target for conta_event in conta_events}
+        logging.info("%d contamination events detected", len(conta_events))
+        logging.info("%d/%d samples contaminated", len(contaminated_samples), species_ab_table.shape[1])
+
+        conta_events.sort(key=lambda e: e.rate, reverse=True)
         ContaminationEventIO.write_tsv(conta_events, args.output_file)
+        logging.info("Contamination events sorted by decreasing contamination rate saved in %s", args.output_file.name)
         args.output_file.close()
 
     elif args.command == "plot_conta":
