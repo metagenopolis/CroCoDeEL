@@ -46,7 +46,7 @@ class ContaminationEventIO:
             file=fh,
         )
 
-        # Write each events
+        # Write each event
         for conta_event in conta_events:
             print(
                 "\t".join(
