@@ -3,11 +3,18 @@
 
 import sys
 import argparse
+import logging
 import multiprocessing
 from utils import load_species_ab_table
 from conta_event import ContaminationEventIO
 from search_conta import ContaminationSearcherDriver
 from plot_conta import ContaminationPlotsReport
+
+
+def set_logging() -> None:
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logging.basicConfig(format='%(asctime)s :: %(levelname)s :: %(message)s')
 
 
 def nproc(value) -> int:
@@ -16,12 +23,12 @@ def nproc(value) -> int:
     try:
         value = int(value)
     except ValueError as value_err:
-        raise argparse.ArgumentTypeError('NPROC is not an integer') from value_err
+        raise argparse.ArgumentTypeError("NPROC is not an integer") from value_err
 
     if value <= 0:
-        raise argparse.ArgumentTypeError('minimum NPROC is 1')
+        raise argparse.ArgumentTypeError("minimum NPROC is 1")
     if value > max_nproc:
-        raise argparse.ArgumentTypeError(f'maximum NPROC is {max_nproc}')
+        raise argparse.ArgumentTypeError(f"maximum NPROC is {max_nproc}")
 
     return value
 
@@ -126,6 +133,7 @@ def get_arguments() -> argparse.Namespace:
 
 
 def main() -> None:
+    set_logging()
     args = get_arguments()
     if args.command == "search_conta":
         species_ab_table = load_species_ab_table(args.species_ab_table)
