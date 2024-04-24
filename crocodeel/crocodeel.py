@@ -156,7 +156,7 @@ def main() -> None:
                         "especially when dealing with samples with similar species abundance profiles "
                         "(longitudinal data, animals raised together)")
         logging.warning("Run the plot_conta subcommand to visualize "
-                        "and check each reported contamination events")
+                        "and check each reported contamination event")
         
 
     elif args.command == "plot_conta":
