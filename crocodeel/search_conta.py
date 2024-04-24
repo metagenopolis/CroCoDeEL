@@ -228,7 +228,6 @@ class ContaminationSearcherWorker:
 
         return (
             not_filtered_data,
-            common_species_upper_triangle,
             species_potentially_in_contamination_line,
             species_potentially_in_contamination_line_indexes,
         )
@@ -241,7 +240,6 @@ class ContaminationSearcherWorker:
 
         (
             not_filtered_data,
-            common_species_upper_triangle,
             species_potentially_in_contamination_line,
             species_potentially_in_contamination_line_indexes,
         ) = self.select_species_potentially_in_contamination_line(source, target)
