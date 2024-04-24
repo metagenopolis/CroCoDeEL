@@ -157,7 +157,7 @@ def main() -> None:
         args.crocodeel_results.close()
 
         ContaminationPlotsReport(
-            mgs_profiles=species_abundance_table,
+            species_ab_table=species_ab_table,
             conta_events=conta_events,
             nrow=args.nrow,
             ncol=args.ncol,

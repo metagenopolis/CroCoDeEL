@@ -34,12 +34,12 @@ class ContaminationSearcherWorker:
     NUMBER_SPECIFIC_SPECIES_TO_CONSIDER = 10
     PROBABILITY_CUTOFF = 0.5
 
-    def __init__(self, mgs_profiles, rf_classifier):
-        self.mgs_profiles = mgs_profiles.div(mgs_profiles.sum(axis=0), axis=1)
+    def __init__(self, species_ab_table, rf_classifier):
+        self.species_ab_table = species_ab_table.div(species_ab_table.sum(axis=0), axis=1)
         with np.errstate(divide="ignore"):
-            self.mgs_profiles = self.mgs_profiles.apply(np.log10)
+            self.species_ab_table = self.species_ab_table.apply(np.log10)
         # Make sure that species names are strings
-        self.mgs_profiles.index = self.mgs_profiles.index.astype(str)
+        self.species_ab_table.index = self.species_ab_table.index.astype(str)
         self.rf_classifier = rf_classifier
 
     def get_mean_abundance_of_most_abundant_species_specific_to_source_sample(self, specific_species_to_source_sample, intercept_specific_species_to_source_sample, number_of_species=NUMBER_SPECIFIC_SPECIES_TO_CONSIDER):
@@ -203,7 +203,7 @@ class ContaminationSearcherWorker:
     def select_species_potentially_in_contamination_line(self, source_sample_name, target_sample_name):
         """Return"""
         # Select all species or only those in upper triangle
-        not_filtered_data = self.mgs_profiles[[target_sample_name, source_sample_name]]
+        not_filtered_data = self.species_ab_table[[target_sample_name, source_sample_name]]
         shared_species_upper_triangle = (
             not_filtered_data[source_sample_name] >= not_filtered_data[target_sample_name]
         ) & (not_filtered_data[target_sample_name] != -np.inf)
@@ -260,17 +260,17 @@ class ContaminationSearcherWorker:
 
 @dataclass
 class ContaminationSearcherDriver:
-    mgs_profiles: pd.DataFrame
+    species_ab_table: pd.DataFrame
     nproc: int = field(default=1)
     chunksize: int = field(default=50)
 
     def search_contamination(self):
-        all_samples = self.mgs_profiles.columns
+        all_samples = self.species_ab_table.columns
         all_sample_pairs = product(all_samples, repeat=2)
         num_sample_pairs = len(all_samples) ** 2
 
         rf_classifier = RandomForestModel.load()
-        worker = ContaminationSearcherWorker(self.mgs_profiles,rf_classifier)
+        worker = ContaminationSearcherWorker(self.species_ab_table,rf_classifier)
 
         all_conta_events = []
 

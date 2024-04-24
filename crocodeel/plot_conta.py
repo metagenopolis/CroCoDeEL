@@ -11,7 +11,7 @@ from conta_event import ContaminationEvent
 
 @dataclass
 class ContaminationPlotsReport:
-    mgs_profiles: pd.DataFrame
+    species_ab_table: pd.DataFrame
     conta_events: list[ContaminationEvent]
     nrow: int = field(default=4)
     ncol: int = field(default=4)
@@ -20,32 +20,32 @@ class ContaminationPlotsReport:
     pseudo_zero: float = field(init=False)
 
     def __post_init__(self):
-        self.mgs_profiles = self.mgs_profiles.div(self.mgs_profiles.sum(axis=0), axis=1)
+        self.species_ab_table = self.species_ab_table.div(self.species_ab_table.sum(axis=0), axis=1)
 
         # log10 transformation
-        min_non_zero = self.mgs_profiles[self.mgs_profiles > 0].min().min()
+        min_non_zero = self.species_ab_table[self.species_ab_table > 0].min().min()
         self.pseudo_zero = round(np.log10(min_non_zero))
         with np.errstate(divide="ignore"):
-            self.mgs_profiles = self.mgs_profiles.apply(np.log10)
-        self.mgs_profiles.replace(-np.inf, self.pseudo_zero, inplace=True)
+            self.species_ab_table = self.species_ab_table.apply(np.log10)
+        self.species_ab_table.replace(-np.inf, self.pseudo_zero, inplace=True)
 
         # Make sure that species names are strings
-        self.mgs_profiles.index = self.mgs_profiles.index.astype(str)
+        self.species_ab_table.index = self.species_ab_table.index.astype(str)
 
     def _create_plot(self, conta_event: ContaminationEvent, ax) -> None:
-        spearman_rho = self.mgs_profiles[conta_event.target].corr(
-            self.mgs_profiles[conta_event.source], method="spearman"
+        spearman_rho = self.species_ab_table[conta_event.target].corr(
+            self.species_ab_table[conta_event.source], method="spearman"
         )
 
         # Do not show species absent in both samples
         # for faster rendering and reduce PDF file size
         non_zero_species = (
-            self.mgs_profiles[conta_event.target] > self.pseudo_zero
-        ) | (self.mgs_profiles[conta_event.source] > self.pseudo_zero)
+            self.species_ab_table[conta_event.target] > self.pseudo_zero
+        ) | (self.species_ab_table[conta_event.source] > self.pseudo_zero)
 
         scatterplot = ax.scatter(
-            x=self.mgs_profiles.loc[non_zero_species, conta_event.target],
-            y=self.mgs_profiles.loc[non_zero_species, conta_event.source],
+            x=self.species_ab_table.loc[non_zero_species, conta_event.target],
+            y=self.species_ab_table.loc[non_zero_species, conta_event.source],
             s=10,
             facecolor="none",
         )
@@ -57,7 +57,7 @@ class ContaminationPlotsReport:
                     if species in conta_event.contamination_specific_species
                     else "black"
                 )
-                for species in self.mgs_profiles.index[non_zero_species]
+                for species in self.species_ab_table.index[non_zero_species]
             ]
             scatterplot.set_edgecolor(edge_colors)
         else:
