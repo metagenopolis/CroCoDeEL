@@ -17,7 +17,7 @@ cd crocodeel
 
 Then, create a specific conda environment with all requirements:
 ```
-conda env create -p crocodeel_env --file conda_env/environment.yml
+conda env create -n crocodeel_env --file conda_env/environment.yml
 ```
 
 Then, activate the environment and run CroCoDeEL: 
