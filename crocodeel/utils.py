@@ -33,21 +33,8 @@ def load_species_ab_table(fh: TextIO) -> pd.DataFrame:
         logging.error("Species abundance in the following samples is not numeric: %s", " ".join(bad_format_samples))
         sys.exit(1)
 
-    # Check that there are no missing values
-    samples_missing_values = species_ab_table.columns[species_ab_table.isna().any()].tolist()
-    if samples_missing_values:
-        logging.error("The following samples have missing values: %s", " ".join(samples_missing_values))
-        sys.exit(1)
-
-    # Check that species are detected in all samples
-    samples_sum = species_ab_table.sum(axis=0)
-    samples_no_species = samples_sum[samples_sum == 0].index.tolist()
-    if samples_no_species:
-        logging.error("No species detected in the following samples: %s", " ".join(samples_no_species))
-        sys.exit(1)
-
     # Normalize to relative abundance
-    species_ab_table = species_ab_table.div(samples_sum, axis=1)
+    species_ab_table = species_ab_table.div(species_ab_table.sum(axis=0), axis=1)
 
     # Perform log10 transformation
     with np.errstate(divide="ignore"):
