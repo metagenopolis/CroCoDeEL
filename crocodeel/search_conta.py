@@ -204,27 +204,27 @@ class ContaminationSearcherWorker:
         """Return"""
         # Select all species or only those in upper triangle
         not_filtered_data = self.mgs_profiles[[target_sample_name, source_sample_name]]
-        common_species_upper_triangle = (
+        shared_species_upper_triangle = (
             not_filtered_data[source_sample_name] >= not_filtered_data[target_sample_name]
         ) & (not_filtered_data[target_sample_name] != -np.inf)
 
         # convert to numpy array
-        common_species_upper_triangle = not_filtered_data[common_species_upper_triangle]
-        common_species_upper_triangle_indexes = common_species_upper_triangle.index.values
+        shared_species_upper_triangle = not_filtered_data[shared_species_upper_triangle]
+        shared_species_upper_triangle_indexes = shared_species_upper_triangle.index.values
         not_filtered_data = not_filtered_data.to_numpy()
-        common_species_upper_triangle = common_species_upper_triangle.to_numpy()
+        shared_species_upper_triangle = shared_species_upper_triangle.to_numpy()
 
         # search species potentially in the contamination line
         species_potentially_in_contamination_line = []
-        for species_id, point in enumerate(common_species_upper_triangle):
+        for species_id, point in enumerate(shared_species_upper_triangle):
             number_of_points_in_upper_left_triangle = np.sum(
-                (common_species_upper_triangle[:, 0] <= point[0]) & (common_species_upper_triangle[:, 1] >= point[1])
+                (shared_species_upper_triangle[:, 0] <= point[0]) & (shared_species_upper_triangle[:, 1] >= point[1])
             )
             number_of_points_in_upper_left_triangle -= 1
             if number_of_points_in_upper_left_triangle <= self.UPPER_LEFT_TRIANGLE_LIMIT:
                 species_potentially_in_contamination_line.append(species_id)
-        species_potentially_in_contamination_line_indexes = common_species_upper_triangle_indexes[species_potentially_in_contamination_line]
-        species_potentially_in_contamination_line = common_species_upper_triangle[species_potentially_in_contamination_line]
+        species_potentially_in_contamination_line_indexes = shared_species_upper_triangle_indexes[species_potentially_in_contamination_line]
+        species_potentially_in_contamination_line = shared_species_upper_triangle[species_potentially_in_contamination_line]
 
         return (
             not_filtered_data,
