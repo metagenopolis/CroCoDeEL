@@ -4,7 +4,7 @@
 import sys
 import argparse
 import multiprocessing
-import pandas as pd
+from utils import load_species_ab_table
 from conta_event import ContaminationEventIO
 from search_conta import ContaminationSearcherDriver
 from plot_conta import ContaminationPlotsReport
@@ -41,7 +41,7 @@ def get_arguments() -> argparse.Namespace:
     )
     search_conta_parser.add_argument(
         "-s",
-        dest="species_abundance_table",
+        dest="species_ab_table",
         type=argparse.FileType("r"),
         required=True,
         help="Input TSV file giving the species abundance profiles in metagenomic samples.",
@@ -69,7 +69,7 @@ def get_arguments() -> argparse.Namespace:
     )
     plot_conta_parser.add_argument(
         "-s",
-        dest="species_abundance_table",
+        dest="species_ab_table",
         type=argparse.FileType("r"),
         required=True,
         help="TSV file giving the abundance of species across metagenomic samples.",
@@ -128,16 +128,11 @@ def get_arguments() -> argparse.Namespace:
 def main() -> None:
     args = get_arguments()
     if args.command == "search_conta":
-        species_abundance_table = pd.read_csv(
-            args.species_abundance_table,
-            sep="\t",
-            header=0,
-            index_col=0
-        )
-        args.species_abundance_table.close()
+        species_ab_table = load_species_ab_table(args.species_ab_table)
+        args.species_ab_table.close()
 
         conta_events = ContaminationSearcherDriver(
-            species_abundance_table,
+            species_ab_table,
             nproc=args.nproc
         ).search_contamination()
         conta_events.sort(key=lambda e: (e.rate, e.probability), reverse=True)
@@ -145,13 +140,8 @@ def main() -> None:
         args.output_file.close()
 
     elif args.command == "plot_conta":
-        species_abundance_table = pd.read_csv(
-            args.species_abundance_table,
-            sep="\t",
-            header=0,
-            index_col=0,
-        )
-        args.species_abundance_table.close()
+        species_ab_table = load_species_ab_table(args.species_ab_table)
+        args.species_ab_table.close()
 
         conta_events = list(ContaminationEventIO.read_tsv(args.crocodeel_results))
         args.crocodeel_results.close()

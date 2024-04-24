@@ -35,11 +35,7 @@ class ContaminationSearcherWorker:
     PROBABILITY_CUTOFF = 0.5
 
     def __init__(self, species_ab_table, rf_classifier):
-        self.species_ab_table = species_ab_table.div(species_ab_table.sum(axis=0), axis=1)
-        with np.errstate(divide="ignore"):
-            self.species_ab_table = self.species_ab_table.apply(np.log10)
-        # Make sure that species names are strings
-        self.species_ab_table.index = self.species_ab_table.index.astype(str)
+        self.species_ab_table = species_ab_table
         self.rf_classifier = rf_classifier
 
     def get_mean_abundance_of_most_abundant_species_specific_to_source_sample(self, specific_species_to_source_sample, intercept_specific_species_to_source_sample, number_of_species=NUMBER_SPECIFIC_SPECIES_TO_CONSIDER):

@@ -20,17 +20,10 @@ class ContaminationPlotsReport:
     pseudo_zero: float = field(init=False)
 
     def __post_init__(self):
-        self.species_ab_table = self.species_ab_table.div(self.species_ab_table.sum(axis=0), axis=1)
-
-        # log10 transformation
-        min_non_zero = self.species_ab_table[self.species_ab_table > 0].min().min()
-        self.pseudo_zero = round(np.log10(min_non_zero))
-        with np.errstate(divide="ignore"):
-            self.species_ab_table = self.species_ab_table.apply(np.log10)
+        # Add pseudo_zero
+        min_non_zero = self.species_ab_table[self.species_ab_table > -np.inf].min().min()
+        self.pseudo_zero = int(np.floor(min_non_zero))
         self.species_ab_table.replace(-np.inf, self.pseudo_zero, inplace=True)
-
-        # Make sure that species names are strings
-        self.species_ab_table.index = self.species_ab_table.index.astype(str)
 
     def _create_plot(self, conta_event: ContaminationEvent, ax) -> None:
         spearman_rho = self.species_ab_table[conta_event.target].corr(
