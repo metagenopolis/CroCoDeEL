@@ -9,7 +9,7 @@ class RandomForestModel:
     @staticmethod
     def get_path() -> Path:
         model_path = (
-            Path(__file__).resolve().parent / "models" / "crocodeel_last_version.joblib"
+            Path(__file__).resolve().parent / "models" / "crocodeel_rf_Mar2023.joblib"
         )
         return model_path
     
