@@ -2,8 +2,9 @@
 
 ## Introduction
 
-CroCoDeEL is a tool that detects cross-sample contamination in shotgun metagenomic data.\
-It accurately identifies contaminated samples but also pinpoints contamination sources and estimates contamination rates.
+CroCoDeEL is a tool that detects cross-sample (aka well-to-well) contamination in shotgun metagenomic data.\
+It accurately identifies contaminated samples but also pinpoints contamination sources and estimates contamination rates.\
+CroCoDeEL relies only on species abundance tables and does not need negative controls.
 
 ## Installation
 
@@ -44,9 +45,9 @@ CroCoDeEL works with relative abundances.
 The table will automatically be normalized so the abundance of each column equals 1.
 
 **Important**: CroCoDeEL requires the abundance of subdominant species to be accurately estimated.\
-We strongly recommend using [the Meteor software suite](https://github.com/metagenopolis/meteor) to generate the species abundance table.\
+We strongly recommend using [the Meteor software suite](https://github.com/metagenopolis/meteor) to generate the species abundance table. 
 Otherwise, you can use [sylph](https://github.com/bluenote-1577/sylph).\
-We strongly advise against the use of other taxonomic profilers such as MetaPhlan4, mOTUs, singlem, kmcp or kraken2.
+We advise against the use of other taxonomic profilers (e.g. MetaPhlan4 or mOTUs) that do not meet this requirement according to our benchmarks.
 
 ### Search contamination
 Run the following command to search for cross-sample contamination:
