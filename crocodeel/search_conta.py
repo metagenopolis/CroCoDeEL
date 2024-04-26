@@ -1,6 +1,5 @@
 import os
-os.environ['OMP_NUM_THREADS'] = '1'
-from dataclasses import dataclass, field
+os.environ["OMP_NUM_THREADS"] = "1"
 from multiprocessing import Pool
 from functools import partial
 from itertools import product
@@ -9,12 +8,43 @@ import pandas as pd
 import tqdm
 import logging
 from time import perf_counter
+from typing import Final, Any
 from sklearn.linear_model import RANSACRegressor, LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import NearestNeighbors
 from scipy.stats import spearmanr
-from conta_event import ContaminationEvent
+from species_ab_table import SpeciesAbTableUtils
+from conta_event import ContaminationEvent, ContaminationEventIO
 from rf_model import RandomForestModel
+
+
+def run_search_conta(args: dict[str,Any]):
+    species_ab_table = SpeciesAbTableUtils.load(args["species_ab_table"])
+    args["species_ab_table"].close()
+    species_ab_table = SpeciesAbTableUtils.normalize(species_ab_table)
+
+    start = perf_counter()
+    logging.info("Search for contaminations started")
+    conta_events = ContaminationSearcherDriver(
+        species_ab_table,
+        nproc=args['nproc']
+    ).search_contamination()
+    logging.info("Search completed in %.1f seconds", np.round(perf_counter() - start, 1))
+
+    contaminated_samples = {conta_event.target for conta_event in conta_events}
+    logging.info("%d contamination events detected", len(conta_events))
+    logging.info("%d/%d samples contaminated", len(contaminated_samples), species_ab_table.shape[1])
+
+    conta_events.sort(key=lambda e: e.rate, reverse=True)
+    ContaminationEventIO.write_tsv(conta_events, args['output_file'])
+    logging.info("Contamination events sorted by decreasing contamination rate saved in %s", args['output_file'].name)
+    args['output_file'].close()
+
+    logging.warning("Contamination events may be false positives, "
+                    "especially when dealing with samples with similar species abundance profiles "
+                    "(longitudinal data, animals raised together)")
+    logging.warning("Run the plot_conta subcommand to visualize "
+                    "and check each reported contamination event")
 
 class UnitSlopeRegression(LinearRegression):
     def fit(self, X, y, sample_weight=None):
@@ -28,6 +58,7 @@ class UnitSlopeRegression(LinearRegression):
     def score(self, X, y, sample_weight=None):
         return mean_squared_error(y, self.predict(X))
 
+
 class ContaminationSearcherWorker:
     UPPER_LEFT_TRIANGLE_LIMIT = 2
     RESIDUAL_THRESHOLD = 0.2
@@ -40,28 +71,64 @@ class ContaminationSearcherWorker:
         self.species_ab_table = species_ab_table
         self.rf_classifier = rf_classifier
 
-    def get_mean_abundance_of_most_abundant_species_specific_to_source_sample(self, specific_species_to_source_sample, intercept_specific_species_to_source_sample, number_of_species=NUMBER_SPECIFIC_SPECIES_TO_CONSIDER):
+    def get_mean_abundance_of_most_abundant_species_specific_to_source_sample(
+        self,
+        specific_species_to_source_sample,
+        intercept_specific_species_to_source_sample,
+        number_of_species=NUMBER_SPECIFIC_SPECIES_TO_CONSIDER,
+    ):
         """"""
-        specific_species_to_source_sample_sorted = specific_species_to_source_sample[specific_species_to_source_sample[:,1].argsort()[::-1]]
+        specific_species_to_source_sample_sorted = specific_species_to_source_sample[
+            specific_species_to_source_sample[:, 1].argsort()[::-1]
+        ]
         if specific_species_to_source_sample_sorted.shape[0] == 0:
             return intercept_specific_species_to_source_sample
-        return (specific_species_to_source_sample_sorted[:number_of_species,1]).mean()
+        return (specific_species_to_source_sample_sorted[:number_of_species, 1]).mean()
 
-    def get_distance_between_mean_abundance_of_specific_species_and_contamination_line(self, specific_species_to_source_sample, intercept_specific_species_to_source_sample, number_of_species=NUMBER_SPECIFIC_SPECIES_TO_CONSIDER):
-        mean_abundance_of_most_abundant_species_specific_to_source_sample = self.get_mean_abundance_of_most_abundant_species_specific_to_source_sample(specific_species_to_source_sample, intercept_specific_species_to_source_sample, number_of_species)
-        return np.abs(mean_abundance_of_most_abundant_species_specific_to_source_sample - intercept_specific_species_to_source_sample)
+    def get_distance_between_mean_abundance_of_specific_species_and_contamination_line(
+        self,
+        specific_species_to_source_sample,
+        intercept_specific_species_to_source_sample,
+        number_of_species=NUMBER_SPECIFIC_SPECIES_TO_CONSIDER,
+    ):
+        mean_abundance_of_most_abundant_species_specific_to_source_sample = (
+            self.get_mean_abundance_of_most_abundant_species_specific_to_source_sample(
+                specific_species_to_source_sample, intercept_specific_species_to_source_sample, number_of_species
+            )
+        )
+        return np.abs(
+            mean_abundance_of_most_abundant_species_specific_to_source_sample
+            - intercept_specific_species_to_source_sample
+        )
 
-    def get_distance_between_mean_abundance_of_specific_species_and_contamination_line2(self, specific_species_to_source_sample, intercept_specific_species_to_source_sample, species_potentially_in_contamination_line_inliers, number_of_species=10):
-        mean_abundance_of_most_abundant_species_specific_to_source_sample = self.get_mean_abundance_of_most_abundant_species_specific_to_source_sample(specific_species_to_source_sample, intercept_specific_species_to_source_sample, number_of_species)
-        if mean_abundance_of_most_abundant_species_specific_to_source_sample == intercept_specific_species_to_source_sample:
+    def get_distance_between_mean_abundance_of_specific_species_and_contamination_line2(
+        self,
+        specific_species_to_source_sample,
+        intercept_specific_species_to_source_sample,
+        species_potentially_in_contamination_line_inliers,
+        number_of_species=10,
+    ):
+        mean_abundance_of_most_abundant_species_specific_to_source_sample = (
+            self.get_mean_abundance_of_most_abundant_species_specific_to_source_sample(
+                specific_species_to_source_sample, intercept_specific_species_to_source_sample, number_of_species
+            )
+        )
+        if (
+            mean_abundance_of_most_abundant_species_specific_to_source_sample
+            == intercept_specific_species_to_source_sample
+        ):
             return 0
-        sorted_points = species_potentially_in_contamination_line_inliers[species_potentially_in_contamination_line_inliers[:, 1].argsort()]
+        sorted_points = species_potentially_in_contamination_line_inliers[
+            species_potentially_in_contamination_line_inliers[:, 1].argsort()
+        ]
         if int(0.1 * len(species_potentially_in_contamination_line_inliers)) > 1:
             num_points_to_select = int(0.1 * len(species_potentially_in_contamination_line_inliers))
-        else :
+        else:
             num_points_to_select = 1
         selected_points = sorted_points[:num_points_to_select]
-        return np.abs(mean_abundance_of_most_abundant_species_specific_to_source_sample - np.mean(selected_points[:,1]))
+        return np.abs(
+            mean_abundance_of_most_abundant_species_specific_to_source_sample - np.mean(selected_points[:, 1])
+        )
 
     def get_mean_distance_to_nearest_neighbors(self, data, number_of_neighbors=NUMBER_NEAREST_NEIGHBORS):
         """"""
@@ -88,20 +155,24 @@ class ContaminationSearcherWorker:
         ]
 
         # Shared species between source and target samples
-        shared_species = not_filtered_data[
-            (not_filtered_data[:, 0] != -np.inf) & (not_filtered_data[:, 1] != -np.inf)
-        ]
+        shared_species = not_filtered_data[(not_filtered_data[:, 0] != -np.inf) & (not_filtered_data[:, 1] != -np.inf)]
         number_of_shared_species = shared_species.shape[0]
 
         #
         number_of_species_in_contamination_line = species_potentially_in_contamination_line_inliers.shape[0]
-        ratio_species_in_contamination_line_to_shared_species = number_of_species_in_contamination_line/number_of_shared_species
-        number_of_species_above_line = np.sum(shared_species[:,1] > shared_species[:,0] + intercept + 0.2)
-        ratio_species_above_line_to_shared_species = number_of_species_above_line/number_of_shared_species
+        ratio_species_in_contamination_line_to_shared_species = (
+            number_of_species_in_contamination_line / number_of_shared_species
+        )
+        number_of_species_above_line = np.sum(shared_species[:, 1] > shared_species[:, 0] + intercept + 0.2)
+        ratio_species_above_line_to_shared_species = number_of_species_above_line / number_of_shared_species
 
         #
-        mean_distance_to_nearest_neighbors = self.get_mean_distance_to_nearest_neighbors(species_potentially_in_contamination_line_inliers)
-        mean_distance_to_farthest_neighbors = self.get_mean_distance_to_farthest_neighbors(species_potentially_in_contamination_line_inliers)
+        mean_distance_to_nearest_neighbors = self.get_mean_distance_to_nearest_neighbors(
+            species_potentially_in_contamination_line_inliers
+        )
+        mean_distance_to_farthest_neighbors = self.get_mean_distance_to_farthest_neighbors(
+            species_potentially_in_contamination_line_inliers
+        )
 
         #
         pseudo_zero = np.min(not_filtered_data[not_filtered_data[:, 0] != -np.inf, 0]) - 1
@@ -130,17 +201,18 @@ class ContaminationSearcherWorker:
         ) / np.sqrt(2)
         mean_distance_to_the_contamination_line = distances.mean()
 
-        return (ratio_species_in_contamination_line_to_shared_species,
-                ratio_species_above_line_to_shared_species,
-                number_of_species_in_contamination_line,
-                number_of_species_above_line,
-                correlation_spearman_all_species,
-                mean_distance_to_the_contamination_line,
-                mean_distance_to_nearest_neighbors,
-                mean_distance_to_farthest_neighbors,
-                distance_between_mean_abundance_of_specific_species_and_contamination_line,
-                distance_between_mean_abundance_of_specific_species_and_contamination_line2,
-            )
+        return (
+            ratio_species_in_contamination_line_to_shared_species,
+            ratio_species_above_line_to_shared_species,
+            number_of_species_in_contamination_line,
+            number_of_species_above_line,
+            correlation_spearman_all_species,
+            mean_distance_to_the_contamination_line,
+            mean_distance_to_nearest_neighbors,
+            mean_distance_to_farthest_neighbors,
+            distance_between_mean_abundance_of_specific_species_and_contamination_line,
+            distance_between_mean_abundance_of_specific_species_and_contamination_line2,
+        )
 
     def get_coefficients_of_potential_contamination_line(self, species_potentially_in_contamination_line):
         """ """
@@ -182,9 +254,7 @@ class ContaminationSearcherWorker:
             species_inliers_indexes = species_potentially_in_contamination_line_indexes[species_inliers]
             species_inliers = species_potentially_in_contamination_line[species_inliers]
 
-            features = self.compute_features(
-                intercept, species_inliers, not_filtered_data
-            )
+            features = self.compute_features(intercept, species_inliers, not_filtered_data)
             features = np.array([features])
             contamination_probability = self.rf_classifier.predict_proba(features)[0, 1]
 
@@ -196,7 +266,9 @@ class ContaminationSearcherWorker:
             # no contamination found with inliers
             # try with remaining outliers
             species_potentially_in_contamination_line = species_potentially_in_contamination_line[species_outliers]
-            species_potentially_in_contamination_line_indexes = species_potentially_in_contamination_line_indexes[species_outliers]
+            species_potentially_in_contamination_line_indexes = species_potentially_in_contamination_line_indexes[
+                species_outliers
+            ]
 
     def select_species_potentially_in_contamination_line(self, source_sample_name, target_sample_name):
         """Return"""
@@ -221,8 +293,12 @@ class ContaminationSearcherWorker:
             number_of_points_in_upper_left_triangle -= 1
             if number_of_points_in_upper_left_triangle <= self.UPPER_LEFT_TRIANGLE_LIMIT:
                 species_potentially_in_contamination_line.append(species_id)
-        species_potentially_in_contamination_line_indexes = shared_species_upper_triangle_indexes[species_potentially_in_contamination_line]
-        species_potentially_in_contamination_line = shared_species_upper_triangle[species_potentially_in_contamination_line]
+        species_potentially_in_contamination_line_indexes = shared_species_upper_triangle_indexes[
+            species_potentially_in_contamination_line
+        ]
+        species_potentially_in_contamination_line = shared_species_upper_triangle[
+            species_potentially_in_contamination_line
+        ]
 
         return (
             not_filtered_data,
@@ -256,11 +332,13 @@ class ContaminationSearcherWorker:
             contamination_specific_species=inliers_indexes.tolist(),
         )
 
-@dataclass
+
 class ContaminationSearcherDriver:
-    species_ab_table: pd.DataFrame
-    nproc: int = field(default=1)
-    chunksize: int = field(default=50)
+    DEFAULT_CHUNKSIZE: Final[int] = 50
+
+    def __init__(self, species_ab_table: pd.DataFrame, nproc: int):
+        self.species_ab_table = species_ab_table
+        self.nproc = nproc
 
     def search_contamination(self):
         all_samples = self.species_ab_table.columns
@@ -268,24 +346,21 @@ class ContaminationSearcherDriver:
         num_sample_pairs = len(all_samples) ** 2
 
         rf_classifier = RandomForestModel.load()
-        worker = ContaminationSearcherWorker(self.species_ab_table,rf_classifier)
+        worker = ContaminationSearcherWorker(self.species_ab_table, rf_classifier)
 
         all_conta_events = []
 
         with Pool(processes=self.nproc) as pool:
             all_tasks = pool.imap_unordered(
-                worker.classify_sample_pair, all_sample_pairs, chunksize=self.chunksize
+                worker.classify_sample_pair, all_sample_pairs, chunksize=self.DEFAULT_CHUNKSIZE
             )
             pbar = partial(
                 tqdm.tqdm,
                 total=num_sample_pairs,
                 bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} sample pairs inspected",
             )
-            start = perf_counter()
-            logging.info("Search for contaminations started")
             for conta_event in pbar(all_tasks):
                 if conta_event.probability >= ContaminationSearcherWorker.PROBABILITY_CUTOFF:
                     all_conta_events.append(conta_event)
-            logging.info("Search completed in %.1f seconds", np.round(perf_counter() - start, 1))
 
         return all_conta_events

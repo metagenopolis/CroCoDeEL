@@ -1,5 +1,4 @@
-from dataclasses import dataclass, field
-from typing import BinaryIO
+from typing import BinaryIO, Any, Final
 from functools import partial
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
@@ -8,20 +7,61 @@ import numpy as np
 import tqdm
 import logging
 from time import perf_counter
-from conta_event import ContaminationEvent
+from conta_event import ContaminationEvent, ContaminationEventIO
+from species_ab_table import SpeciesAbTableUtils
 
 
-@dataclass
+def run_plot_conta(args: dict[str, Any]):
+    species_ab_table = SpeciesAbTableUtils.load(args["species_ab_table"])
+    args["species_ab_table"].close()
+    species_ab_table = SpeciesAbTableUtils.normalize(species_ab_table)
+
+    conta_events = list(ContaminationEventIO.read_tsv(args["conta_events"]))
+    args["conta_events"].close()
+    logging.info("%d contamination events loaded", len(conta_events))
+
+    start = perf_counter()
+    logging.info("Generation of the PDF report started")
+    ContaminationPlotsReport(
+        species_ab_table=species_ab_table,
+        conta_events=conta_events,
+        nrow=args["nrow"],
+        ncol=args["ncol"],
+        no_contamination_line=args["no_conta_line"],
+        color_contamination_specific_species=args["color_conta_species"],
+    ).save_to_pdf(args["output_file"])
+    logging.info("Generation completed in %.1f seconds", np.round(perf_counter() - start, 1))
+    logging.info("PDF report saved in %s", args["output_file"].name)
+    args["output_file"].close()
+
+
+class Defaults:
+    MIN_NROW: Final[int] = 1
+    NROW: Final[int] = 4
+    MAX_NROW: Final[int] = 11
+    MIN_NCOL: Final[int] = 1
+    NCOL: Final[int] = 4
+    MAX_NCOL: Final[int] = 11
+
+
 class ContaminationPlotsReport:
-    species_ab_table: pd.DataFrame
-    conta_events: list[ContaminationEvent]
-    nrow: int = field(default=4)
-    ncol: int = field(default=4)
-    no_contamination_line: bool = field(default=False)
-    color_contamination_specific_species: bool = field(default=False)
-    pseudo_zero: float = field(init=False)
 
-    def __post_init__(self):
+    def __init__(
+        self,
+        species_ab_table: pd.DataFrame,
+        conta_events: list[ContaminationEvent],
+        nrow: int,
+        ncol: int,
+        no_contamination_line: bool,
+        color_contamination_specific_species: bool,
+    ):
+        self.species_ab_table = species_ab_table
+        self.conta_events = conta_events
+        self.nrow = nrow
+        self.ncol = ncol
+        self.no_contamination_line = no_contamination_line
+        self.color_contamination_specific_species = color_contamination_specific_species
+
         # Add pseudo_zero
         min_non_zero = self.species_ab_table[self.species_ab_table > -np.inf].min().min()
         self.pseudo_zero = int(np.floor(min_non_zero))
@@ -107,8 +147,6 @@ class ContaminationPlotsReport:
         num_pages = int(
             np.ceil(float(len(self.conta_events) / num_plots_per_page))
         )
-        start = perf_counter()
-        logging.info("Generation of the PDF report started")
         with PdfPages(pdf_fh) as pdf:
             pbar = partial(
                 tqdm.tqdm,
@@ -132,4 +170,3 @@ class ContaminationPlotsReport:
                 plt.tight_layout()
                 fig.savefig(pdf, format="pdf")
                 plt.close(fig)
-        logging.info("Generation completed in %.1f seconds", np.round(perf_counter() - start, 1))
