@@ -191,7 +191,7 @@ class ContaminationSearcherWorker:
         )
 
         #
-        correlation_spearman_all_species, _ = spearmanr(not_filtered_data[:, 0], not_filtered_data[:, 1])
+        correlation_spearman_all_species = spearmanr(not_filtered_data[:, 0], not_filtered_data[:, 1])[0]
 
         #
         distances = np.abs(
@@ -228,47 +228,6 @@ class ContaminationSearcherWorker:
         intercept = ransac.estimator_.coeffs[1]
 
         return species_inliers, intercept
-
-    def crocodeel(
-        self,
-        species_potentially_in_contamination_line,
-        species_potentially_in_contamination_line_indexes,
-        not_filtered_data,
-    ):
-        while True:
-            # Not enough species in the potential contamination line
-            # no contamination found, exit loop
-            if species_potentially_in_contamination_line.shape[0] <= 5:
-                return 0, 0, np.empty(0)
-
-            species_inliers, intercept = self.get_coefficients_of_potential_contamination_line(
-                species_potentially_in_contamination_line
-            )
-
-            # Not enough inliers species in the potential contamination line
-            # no contamination found, exit loop
-            if np.sum(species_inliers) <= 5:
-                return 0, 0, np.empty(0)
-
-            species_outliers = np.logical_not(species_inliers)
-            species_inliers_indexes = species_potentially_in_contamination_line_indexes[species_inliers]
-            species_inliers = species_potentially_in_contamination_line[species_inliers]
-
-            features = self.compute_features(intercept, species_inliers, not_filtered_data)
-            features = np.array([features])
-            contamination_probability = self.rf_classifier.predict_proba(features)[0, 1]
-
-            # contamination found, exit loop
-            if contamination_probability >= self.PROBABILITY_CUTOFF:
-                contamination_rate = np.round(10 ** (-intercept), 4)
-                return contamination_probability, contamination_rate, species_inliers_indexes
-
-            # no contamination found with inliers
-            # try with remaining outliers
-            species_potentially_in_contamination_line = species_potentially_in_contamination_line[species_outliers]
-            species_potentially_in_contamination_line_indexes = species_potentially_in_contamination_line_indexes[
-                species_outliers
-            ]
 
     def select_species_potentially_in_contamination_line(self, source_sample_name, target_sample_name):
         """Return"""
@@ -312,25 +271,58 @@ class ContaminationSearcherWorker:
         if source == target:
             return ContaminationEvent(source, target)
 
+        # Search a potential contamination line
         (
             not_filtered_data,
             species_potentially_in_contamination_line,
             species_potentially_in_contamination_line_indexes,
         ) = self.select_species_potentially_in_contamination_line(source, target)
 
-        contamination_probability, contamination_rate, inliers_indexes = self.crocodeel(
-            species_potentially_in_contamination_line,
-            species_potentially_in_contamination_line_indexes,
-            not_filtered_data,
-        )
+        while True:
+            # Not enough species in the potential contamination line
+            # no contamination found, exit loop
+            if species_potentially_in_contamination_line.shape[0] <= 5:
+                return ContaminationEvent(source, target)
 
-        return ContaminationEvent(
-            source,
-            target,
-            rate=contamination_rate,
-            probability=contamination_probability,
-            contamination_specific_species=inliers_indexes.tolist(),
-        )
+            # Run RANSAC to estimate the intercept of the potential contamination line
+            # and get inlier and outlier species
+            species_inliers, intercept = self.get_coefficients_of_potential_contamination_line(
+                species_potentially_in_contamination_line
+            )
+
+            # Not enough inlier species in the potential contamination line
+            # no contamination found, exit loop
+            if np.sum(species_inliers) <= 5:
+                return ContaminationEvent(source, target)
+
+            species_outliers = np.logical_not(species_inliers)
+            species_inliers_indexes = species_potentially_in_contamination_line_indexes[species_inliers]
+            species_inliers = species_potentially_in_contamination_line[species_inliers]
+
+            # Extract features describing the current sample pair and the potential contamination line
+            features = self.compute_features(intercept, species_inliers, not_filtered_data)
+            features = np.array([features])
+
+            # Apply the random forest model with the extracted features
+            contamination_probability = self.rf_classifier.predict_proba(features)[0, 1]
+
+            # contamination found, exit loop
+            if contamination_probability >= self.PROBABILITY_CUTOFF:
+                contamination_rate = np.round(10 ** (-intercept), 4)
+                return ContaminationEvent(
+                    source,
+                    target,
+                    rate=contamination_rate,
+                    probability=contamination_probability,
+                    contamination_specific_species=species_inliers_indexes.tolist(),
+                )
+
+            # no contamination found with inliers
+            # try with remaining outliers
+            species_potentially_in_contamination_line = species_potentially_in_contamination_line[species_outliers]
+            species_potentially_in_contamination_line_indexes = species_potentially_in_contamination_line_indexes[
+                species_outliers
+            ]
 
 
 class ContaminationSearcherDriver:
