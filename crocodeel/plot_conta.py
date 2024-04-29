@@ -12,13 +12,17 @@ from species_ab_table import SpeciesAbTableUtils
 
 
 def run_plot_conta(args: dict[str, Any]):
-    species_ab_table = SpeciesAbTableUtils.load(args["species_ab_table"])
-    args["species_ab_table"].close()
-    species_ab_table = SpeciesAbTableUtils.normalize(species_ab_table)
+    if "species_ab_table" in args:
+        species_ab_table = args["species_ab_table"]
+    else:
+        species_ab_table = SpeciesAbTableUtils.load(args["species_ab_table_fh"])
+        args["species_ab_table_fh"].close()
+        species_ab_table = SpeciesAbTableUtils.normalize(species_ab_table)
 
-    conta_events = list(ContaminationEventIO.read_tsv(args["conta_events"]))
-    args["conta_events"].close()
-    logging.info("%d contamination events loaded", len(conta_events))
+    conta_events = list(ContaminationEventIO.read_tsv(args["conta_events_fh"]))
+    if args["conta_events_fh"].mode == 'r':
+        logging.info("%d contamination events loaded", len(conta_events))
+    args["conta_events_fh"].close()
 
     start = perf_counter()
     logging.info("Generation of the PDF report started")
@@ -29,10 +33,10 @@ def run_plot_conta(args: dict[str, Any]):
         ncol=args["ncol"],
         no_contamination_line=args["no_conta_line"],
         color_contamination_specific_species=args["color_conta_species"],
-    ).save_to_pdf(args["output_file"])
-    logging.info("Generation completed in %.1f seconds", np.round(perf_counter() - start, 1))
-    logging.info("PDF report saved in %s", args["output_file"].name)
-    args["output_file"].close()
+    ).save_to_pdf(args["pdf_report_fh"])
+    logging.info("PDF report generated in %.1f seconds", np.round(perf_counter() - start, 1))
+    logging.info("PDF report saved in %s", args["pdf_report_fh"].name)
+    args["pdf_report_fh"].close()
 
 
 class Defaults:
