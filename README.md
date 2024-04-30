@@ -12,7 +12,7 @@ CroCoDeEL can be easily installed with conda.
 
 First, clone the git repository in a local directory:
 ```
-git clone https://forgemia.inra.fr/metagenopolis/crocodeel.git
+git clone https://github.com/metagenopolis/crocodeel.git
 cd crocodeel
 ```
 
@@ -21,11 +21,15 @@ Then, create a specific conda environment with all requirements:
 conda env create -n crocodeel_env --file conda_env/environment.yml
 ```
 
-Then, activate the environment and run CroCoDeEL: 
+Next, activate the conda environment: 
 
 ```
 conda activate crocodeel_env
-python3 crocodeel/crocodeel.py -h
+```
+
+Finally, you can test that CroCoDeEL is correctly installed with the following command:
+```
+python3 crocodeel/crocodeel.py test_install
 ```
 
 _CroCoDeEL will be released on bioconda soon._
@@ -52,7 +56,7 @@ We advise against the use of other taxonomic profilers (e.g. MetaPhlan4 or mOTUs
 ### Search contamination
 Run the following command to search for cross-sample contamination:
 ```
-python3 crocodeel/crocodeel.py search_conta -s species_abundance.tsv -o contamination_events.tsv
+python3 crocodeel/crocodeel.py search_conta -s species_abundance.tsv -c contamination_events.tsv
 ```
 CroCoDeEL will report all detected contamination events in the _contamination_events.tsv_ output file.\
 This TSV file reports for each event the contamination source, the contaminated sample (target) and the estimated contamination rate.\
@@ -61,10 +65,16 @@ The score (probability) computed by the Random Forest model as well as species s
 ### Visualization of the results
 Contaminations events can be visually inspected by generating a PDF file consisting in scatterplots.
 ```
-python3 crocodeel/crocodeel.py plot_conta -s species_abundance.tsv -c contamination_events.tsv -o contamination_events.pdf
+python3 crocodeel/crocodeel.py plot_conta -s species_abundance.tsv -c contamination_events.tsv -r contamination_events.pdf
 ```
 Each scatterplot compares in a log-scale the species abundance profiles of a contaminated sample (x-axis) and its contamination source (y-axis).\
 The contamination line (in red) highlights species specifically introduced by contamination.
+
+### Easy workflow
+Alternatively, you can search for cross-sample contamination and create the PDF report in one command.
+```
+python3 crocodeel/crocodeel.py easy_wf -s species_abundance.tsv -c contamination_events.tsv -r contamination_events.pdf
+```
 
 ### Results interpretation
 CroCoDeEL will probably report false contamination events for samples with similar species abundances profiles (e.g. longitudinal data, animals raised together).\
