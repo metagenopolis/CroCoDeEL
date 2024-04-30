@@ -8,6 +8,7 @@ import multiprocessing
 from search_conta import run_search_conta
 from plot_conta import run_plot_conta, Defaults as plot_conta_defaults
 from easy_wf import run_easy_wf
+from test_install import run_test_install
 
 
 def set_logging() -> None:
@@ -169,6 +170,17 @@ def get_arguments() -> argparse.Namespace:
         "(default: %(default)d)",
     )
 
+    test_install_parser = subparsers.add_parser(
+        "test_install", help="Test if CroCoDeEL is correctly installed "
+        "and generates expected results"
+    )
+    test_install_parser.add_argument(
+        "--keep",
+        dest="keep_results",
+        action="store_true",
+        help="Keep all temporary results files.",
+    )
+
     return parser.parse_args(args=sys.argv[1:] or ["--help"])
 
 
@@ -181,6 +193,8 @@ def main() -> None:
         run_plot_conta(vars(args))
     elif args.command == "easy_wf":
         run_easy_wf(vars(args))
+    elif args.command == "test_install":
+        run_test_install(args.keep_results)
 
 if __name__ == "__main__":
     main()
