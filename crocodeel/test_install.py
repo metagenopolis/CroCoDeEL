@@ -1,10 +1,10 @@
-from easy_wf import run_easy_wf
 from typing import Final
 from pathlib import Path
 import logging
 from tempfile import NamedTemporaryFile
 import filecmp
 import sys
+from crocodeel.easy_wf import run_easy_wf
 
 class TestData:
     SPECIES_ABUNDANCE_TABLE: Final[Path] = (
@@ -43,4 +43,3 @@ def run_test_install(keep_results: bool) -> None:
         else:
             logging.error("Contamination events found are not those expected")
             sys.exit(1)
-            

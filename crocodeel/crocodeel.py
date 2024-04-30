@@ -5,10 +5,11 @@ import sys
 import argparse
 import logging
 import multiprocessing
-from search_conta import run_search_conta
-from plot_conta import run_plot_conta, Defaults as plot_conta_defaults
-from easy_wf import run_easy_wf
-from test_install import run_test_install
+from importlib.metadata import version
+from crocodeel.search_conta import run_search_conta
+from crocodeel.plot_conta import run_plot_conta, Defaults as plot_conta_defaults
+from crocodeel.easy_wf import run_easy_wf
+from crocodeel.test_install import run_test_install
 
 
 def set_logging() -> None:
@@ -35,6 +36,10 @@ def nproc(value) -> int:
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="crocodeel")
+    parser.add_argument(
+        "-v", "--version", action="version", version=f"%(prog)s version { version('crocodeel')}"
+    )
+
 
     subparsers = parser.add_subparsers(
         title="positional arguments",
@@ -143,7 +148,7 @@ def get_arguments() -> argparse.Namespace:
         type=argparse.FileType("r"),
         required=True,
         metavar='SPECIES_ABUNDANCE_TABLE',
-        help="Input TSV file giving the species abundance profiles in metagenomic samples.",
+        help="Input TSV file giving the species abundance profiles in metagenomic samples",
     )
     easy_wf_parser.add_argument(
        "-c",
@@ -151,7 +156,7 @@ def get_arguments() -> argparse.Namespace:
         type=argparse.FileType("w+"),
         required=True,
         metavar='CONTAMINATION_EVENTS_FILE',
-        help="Output TSV file listing all contamination events.",
+        help="Output TSV file listing all contamination events",
     )
     easy_wf_parser.add_argument(
         "-r",
@@ -159,7 +164,7 @@ def get_arguments() -> argparse.Namespace:
         type=argparse.FileType("wb"),
         required=True,
         metavar='PDF_REPORT_FILE',
-        help="Output PDF file with scatterplots for all contamination events.",
+        help="Output PDF file with scatterplots for all contamination events",
     )
     easy_wf_parser.add_argument(
         "--nproc",
@@ -171,7 +176,7 @@ def get_arguments() -> argparse.Namespace:
     )
 
     test_install_parser = subparsers.add_parser(
-        "test_install", help="Test if CroCoDeEL is correctly installed "
+        "test_install", help="Test if %(prog)s is correctly installed "
         "and generates expected results"
     )
     test_install_parser.add_argument(

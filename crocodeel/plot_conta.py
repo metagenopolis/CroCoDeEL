@@ -7,8 +7,8 @@ import numpy as np
 import tqdm
 import logging
 from time import perf_counter
-from conta_event import ContaminationEvent, ContaminationEventIO
-from species_ab_table import SpeciesAbTableUtils
+from crocodeel.conta_event import ContaminationEvent, ContaminationEventIO
+from crocodeel.species_ab_table import SpeciesAbTableUtils
 
 
 def run_plot_conta(args: dict[str, Any]):

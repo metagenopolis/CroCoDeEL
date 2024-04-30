@@ -13,9 +13,9 @@ from sklearn.linear_model import RANSACRegressor, LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import NearestNeighbors
 from scipy.stats import spearmanr
-from species_ab_table import SpeciesAbTableUtils
-from conta_event import ContaminationEvent, ContaminationEventIO
-from rf_model import RandomForestModel
+from crocodeel.species_ab_table import SpeciesAbTableUtils
+from crocodeel.conta_event import ContaminationEvent, ContaminationEventIO
+from crocodeel.rf_model import RandomForestModel
 
 
 def run_search_conta(args: dict[str,Any]):
