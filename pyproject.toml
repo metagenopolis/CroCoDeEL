@@ -2,7 +2,14 @@
 name = "crocodeel"
 version = "1.0.0"
 description = "CroCoDeEL is a tool that detects cross-sample (aka well-to-well) contamination in shotgun metagenomic data"
-authors = ["Lindsay Goulet <lindsay.goulet@inrae.fr>", "Florian Plaza Oñate <florian.plaza-onate@inrae.fr>", "Edi Prifti <edi.prifti@ird.fr>", "Eugeni Belda <eugeni.belda@ird.fr>", "Emmanuelle Le Chatelier <emmanuelle.le-chatelier@inrae.fr>", "Guillaume Gautreau <guillaume.gautreau@inrae.fr>"]
+authors = [
+    "Lindsay Goulet <lindsay.goulet@inrae.fr>",
+    "Florian Plaza Oñate <florian.plaza-onate@inrae.fr>",
+    "Edi Prifti <edi.prifti@ird.fr>",
+    "Eugeni Belda <eugeni.belda@ird.fr>",
+    "Emmanuelle Le Chatelier <emmanuelle.le-chatelier@inrae.fr>",
+    "Guillaume Gautreau <guillaume.gautreau@inrae.fr>",
+]
 license = "GPL-3.0-or-later"
 readme = "README.md"
 keywords = ["Metagenomics"]
@@ -12,11 +19,9 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
-    "Topic :: Scientific/Engineering :: Bio-Informatics"
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
-packages = [
-    { include = "crocodeel" },
-]
+packages = [{ include = "crocodeel" }]
 
 
 [tool.poetry.scripts]
@@ -39,9 +44,6 @@ types-tqdm = "^4.66"
 
 [tool.poetry.group.pylint.dependencies]
 pylint = "^3.1"
-
-[flake8]
-max-line-length = 120
 
 [build-system]
 requires = ["poetry-core"]
