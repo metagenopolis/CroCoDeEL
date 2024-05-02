@@ -1,5 +1,3 @@
-import os
-os.environ["OMP_NUM_THREADS"] = "1"
 from multiprocessing import Pool
 from functools import partial
 from itertools import product
@@ -13,7 +11,7 @@ from sklearn.linear_model import RANSACRegressor, LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import NearestNeighbors
 from scipy.stats import spearmanr
-from crocodeel.species_ab_table import SpeciesAbTableUtils
+import crocodeel.ab_table_utils as ab_table_utils
 from crocodeel.conta_event import ContaminationEvent, ContaminationEventIO
 from crocodeel.rf_model import RandomForestModel
 
@@ -23,9 +21,9 @@ def run_search_conta(args: dict[str,Any]):
     if "species_ab_table" in args:
         species_ab_table = args["species_ab_table"]
     else:
-        species_ab_table = SpeciesAbTableUtils.load(args["species_ab_table_fh"])
+        species_ab_table = ab_table_utils.load(args["species_ab_table_fh"])
         args["species_ab_table_fh"].close()
-        species_ab_table = SpeciesAbTableUtils.normalize(species_ab_table)
+        species_ab_table = ab_table_utils.normalize(species_ab_table)
 
     start = perf_counter()
     logging.info("Search for contaminations started")

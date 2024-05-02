@@ -1,12 +1,12 @@
 from typing import Any
-from crocodeel.species_ab_table import SpeciesAbTableUtils
+import crocodeel.ab_table_utils as ab_table_utils
 from crocodeel.search_conta import run_search_conta
 from crocodeel.plot_conta import run_plot_conta, Defaults as plot_conta_defaults
 
 def run_easy_wf(args: dict[str,Any]):
-    species_ab_table = SpeciesAbTableUtils.load(args["species_ab_table_fh"])
+    species_ab_table = ab_table_utils.load(args["species_ab_table_fh"])
     args["species_ab_table_fh"].close()
-    args["species_ab_table"] = SpeciesAbTableUtils.normalize(species_ab_table)
+    args["species_ab_table"] = ab_table_utils.normalize(species_ab_table)
 
     run_search_conta(args)
 

@@ -8,16 +8,16 @@ import tqdm
 import logging
 from time import perf_counter
 from crocodeel.conta_event import ContaminationEvent, ContaminationEventIO
-from crocodeel.species_ab_table import SpeciesAbTableUtils
+import crocodeel.ab_table_utils as ab_table_utils
 
 
 def run_plot_conta(args: dict[str, Any]):
     if "species_ab_table" in args:
         species_ab_table = args["species_ab_table"]
     else:
-        species_ab_table = SpeciesAbTableUtils.load(args["species_ab_table_fh"])
+        species_ab_table = ab_table_utils.load(args["species_ab_table_fh"])
         args["species_ab_table_fh"].close()
-        species_ab_table = SpeciesAbTableUtils.normalize(species_ab_table)
+        species_ab_table = ab_table_utils.normalize(species_ab_table)
 
     conta_events = list(ContaminationEventIO.read_tsv(args["conta_events_fh"]))
     if args["conta_events_fh"].mode == 'r':
