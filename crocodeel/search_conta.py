@@ -1,17 +1,17 @@
 from multiprocessing import Pool
 from functools import partial
 from itertools import product
-import numpy as np
-import pandas as pd
-import tqdm
 import logging
 from time import perf_counter
 from typing import Final, Any
+import numpy as np
+import pandas as pd
+import tqdm
 from sklearn.linear_model import RANSACRegressor, LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import NearestNeighbors
 from scipy.stats import spearmanr
-import crocodeel.ab_table_utils as ab_table_utils
+from crocodeel import ab_table_utils
 from crocodeel.conta_event import ContaminationEvent, ContaminationEventIO
 from crocodeel.rf_model import RandomForestModel
 
@@ -39,7 +39,10 @@ def run_search_conta(args: dict[str,Any]):
 
     conta_events.sort(key=lambda e: e.rate, reverse=True)
     ContaminationEventIO.write_tsv(conta_events, args['conta_events_fh'])
-    logging.info("Contamination events sorted by decreasing contamination rate saved in %s", args['conta_events_fh'].name)
+    logging.info(
+        "Contamination events sorted by decreasing contamination rate saved in %s",
+        args["conta_events_fh"].name,
+    )
     if args["conta_events_fh"].mode == 'w':
         args["conta_events_fh"].close()
 

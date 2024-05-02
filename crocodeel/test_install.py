@@ -19,12 +19,20 @@ class TestData:
 
 def run_test_install(keep_results: bool) -> None:
     with (
-        open(TestData.SPECIES_ABUNDANCE_TABLE, "r") as species_ab_table_fh,
+        open(TestData.SPECIES_ABUNDANCE_TABLE, "r", encoding="utf-8") as species_ab_table_fh,
         NamedTemporaryFile(
-            mode="w+", prefix="contamination_events_", suffix=".tsv", delete = not keep_results, delete_on_close=False
+            mode="w+",
+            prefix="contamination_events_",
+            suffix=".tsv",
+            delete=not keep_results,
+            delete_on_close=False,
         ) as conta_events_fh,
         NamedTemporaryFile(
-            mode="wb", prefix="contamination_events_", suffix=".pdf", delete = not keep_results, delete_on_close=False
+            mode="wb",
+            prefix="contamination_events_",
+            suffix=".pdf",
+            delete=not keep_results,
+            delete_on_close=False,
         ) as pdf_report_fh,
     ):
         easy_wf_args = {

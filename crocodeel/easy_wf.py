@@ -1,5 +1,5 @@
 from typing import Any
-import crocodeel.ab_table_utils as ab_table_utils
+from crocodeel import ab_table_utils
 from crocodeel.search_conta import run_search_conta
 from crocodeel.plot_conta import run_plot_conta, Defaults as plot_conta_defaults
 
@@ -16,6 +16,3 @@ def run_easy_wf(args: dict[str,Any]):
     args["no_conta_line"] = False
     args["color_conta_species"] = False
     run_plot_conta(args)
-
-
-

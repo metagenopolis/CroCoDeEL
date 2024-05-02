@@ -12,7 +12,7 @@ class RandomForestModel:
             Path(__file__).resolve().parent / "models" / "crocodeel_rf_Mar2023.joblib"
         )
         return model_path
-    
+
     @staticmethod
     def load() -> RandomForestClassifier:
         return joblib.load(RandomForestModel.get_path())

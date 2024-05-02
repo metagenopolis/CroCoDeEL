@@ -1,14 +1,14 @@
 from typing import BinaryIO, Any, Final
 from functools import partial
+import logging
+from time import perf_counter
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import tqdm
-import logging
-from time import perf_counter
 from crocodeel.conta_event import ContaminationEvent, ContaminationEventIO
-import crocodeel.ab_table_utils as ab_table_utils
+from crocodeel import ab_table_utils
 
 
 def run_plot_conta(args: dict[str, Any]):
