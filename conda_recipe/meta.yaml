@@ -8,7 +8,7 @@ package:
 
 source:
   url: https://github.com/metagenopolis/{{ name }}/archive/v{{ version }}.tar.gz
-  sha256: 0b95045f8466c6f45bb73f8d6f5fccad29e6a5a01217489643dc8fedce099a9a
+  sha256: 948e4f10c9d0188db0615201b4b2622708c86340bebec5a64cb0fa744ddc2a23
 
 build:
   noarch: python
