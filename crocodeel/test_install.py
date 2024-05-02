@@ -4,6 +4,7 @@ import logging
 from tempfile import NamedTemporaryFile
 import filecmp
 import sys
+import os
 from crocodeel.easy_wf import run_easy_wf
 
 class TestData:
@@ -51,3 +52,6 @@ def run_test_install(keep_results: bool) -> None:
         else:
             logging.error("Contamination events found are not those expected")
             sys.exit(1)
+
+    if not keep_results:
+        logging.info("Temporary result files deleted")
