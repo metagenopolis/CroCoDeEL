@@ -1,6 +1,6 @@
 #  CroCoDeEL : **CRO**ss-sample **CO**ntamination **DE**tection and **E**stimation of its **L**evels 🐊
 
-[![install with conda](https://img.shields.io/conda/vn/fplazaonate/crocodeel?color=green&label=fplazaonate%2Fcrocodeel&logo=anaconda)](https://anaconda.org/fplazaonate/crocodeel)
+[![install with conda](https://img.shields.io/conda/vn/bioconda/crocodeel?color=green&label=bioconda%2Fcrocodeel&logo=anaconda)](https://anaconda.org/bioconda/crocodeel)
 [![PyPI](https://img.shields.io/pypi/v/crocodeel?label=pypi%20package)](https://pypi.org/project/crocodeel/)
 
 ## Introduction
@@ -11,9 +11,9 @@ CroCoDeEL relies only on species abundance tables and does not need negative con
 
 ## Installation
 
-CroCoDeEL can be easily installed with conda:
+CroCoDeEL is available on bioconda:
 ```
-conda create --name crocodeel_env -c conda-forge -c fplazaonate crocodeel
+conda create --name crocodeel_env -c conda-forge -c bioconda crocodeel
 conda activate crocodeel_env
 ```
 
