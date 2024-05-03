@@ -15,7 +15,7 @@ def run_plot_conta(args: dict[str, Any]):
     if "species_ab_table" in args:
         species_ab_table = args["species_ab_table"]
     else:
-        species_ab_table = ab_table_utils.load(args["species_ab_table_fh"])
+        species_ab_table = ab_table_utils.read(args["species_ab_table_fh"])
         args["species_ab_table_fh"].close()
         species_ab_table = ab_table_utils.normalize(species_ab_table)
 

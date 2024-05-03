@@ -4,7 +4,7 @@ from crocodeel.search_conta import run_search_conta
 from crocodeel.plot_conta import run_plot_conta, Defaults as plot_conta_defaults
 
 def run_easy_wf(args: dict[str,Any]):
-    species_ab_table = ab_table_utils.load(args["species_ab_table_fh"])
+    species_ab_table = ab_table_utils.read(args["species_ab_table_fh"])
     args["species_ab_table_fh"].close()
     args["species_ab_table"] = ab_table_utils.normalize(species_ab_table)
 
