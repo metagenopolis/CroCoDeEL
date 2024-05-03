@@ -1,7 +1,9 @@
 import importlib.resources
 from pathlib import Path
 from typing import Final
+import warnings
 import joblib
+from sklearn.exceptions import InconsistentVersionWarning
 from sklearn.ensemble import RandomForestClassifier
 
 
@@ -12,4 +14,6 @@ class RandomForestModel:
 
     @staticmethod
     def load() -> RandomForestClassifier:
-        return joblib.load(RandomForestModel.RF_MODEL_FILE)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(action='ignore',category=InconsistentVersionWarning)
+            return joblib.load(RandomForestModel.RF_MODEL_FILE)
