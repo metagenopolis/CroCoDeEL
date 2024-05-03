@@ -1,21 +1,23 @@
-from typing import Final
+import importlib.resources
 from pathlib import Path
 import logging
 from tempfile import NamedTemporaryFile
 import filecmp
 import sys
-import os
+from typing import Final
 from crocodeel.easy_wf import run_easy_wf
 
 class TestData:
-    SPECIES_ABUNDANCE_TABLE: Final[Path] = (
-        Path(__file__).resolve().parent / "test_data" / "mgs_profiles_test.tsv"
+    SPECIES_ABUNDANCE_TABLE: Final[Path] = Path(
+        importlib.resources.files().joinpath("test_data", "mgs_profiles_test.tsv")
     )
-    EXPECTED_CONTA_EVENTS_FILE: Final[Path] = (
-        Path(__file__).resolve().parent / "test_data" / "results" / "contamination_events.tsv"
+
+    EXPECTED_CONTA_EVENTS_FILE: Final[Path] = Path(
+        importlib.resources.files().joinpath("test_data", "results", "contamination_events.tsv")
     )
-    EXPECTED_PDF_REPORT_FILE: Final[Path] = (
-        Path(__file__).resolve().parent / "test_data" / "results" / "contamination_events.pdf"
+
+    EXPECTED_PDF_REPORT_FILE: Final[Path] = Path(
+        importlib.resources.files().joinpath("test_data", "results", "contamination_events.pdf")
     )
 
 def run_test_install(keep_results: bool) -> None:
