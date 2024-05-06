@@ -15,5 +15,9 @@ class RandomForestModel:
     @staticmethod
     def load() -> RandomForestClassifier:
         with warnings.catch_warnings():
-            warnings.filterwarnings(action='ignore',category=InconsistentVersionWarning)
+            warnings.filterwarnings(action="ignore", category=InconsistentVersionWarning)
             return joblib.load(RandomForestModel.RF_MODEL_FILE)
+
+    @staticmethod
+    def get_version() -> str:
+        return RandomForestModel.RF_MODEL_FILE.stem

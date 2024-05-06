@@ -6,6 +6,7 @@ import argparse
 import logging
 import multiprocessing
 from importlib.metadata import version
+from crocodeel.execution_description import ExecutionDescription
 from crocodeel.search_conta import run_search_conta
 from crocodeel.plot_conta import run_plot_conta, Defaults as plot_conta_defaults
 from crocodeel.easy_wf import run_easy_wf
@@ -37,7 +38,7 @@ def nproc(value) -> int:
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="crocodeel")
     parser.add_argument(
-        "-v", "--version", action="version", version=f"%(prog)s version { version('crocodeel')}"
+        "-v", "--version", action="version", version=f"%(prog)s version { version("crocodeel")}"
     )
 
 
@@ -192,6 +193,12 @@ def get_arguments() -> argparse.Namespace:
 def main() -> None:
     set_logging()
     args = get_arguments()
+
+    # Add comment line in output file describing execution context
+    if args.command in ("search_conta","easy_wf"):
+        exec_desc = ExecutionDescription(args.species_ab_table_fh.name)
+        print(exec_desc, file = args.conta_events_fh)
+
     if args.command == "search_conta":
         run_search_conta(vars(args))
     elif args.command == "plot_conta":

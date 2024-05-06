@@ -15,6 +15,15 @@ class ContaminationEvent:
 class ContaminationEventIO:
     @staticmethod
     def read_tsv(fh: TextIO) -> Iterator[ContaminationEvent]:
+        # Ugly hack to skip comment lines
+        pos = 0
+        while fh :
+            line = fh.readline()
+            if not line.startswith("#"):
+                break
+            pos = fh.tell()
+        fh.seek(pos)
+
         tsv_reader = csv.DictReader(fh, delimiter="\t")
 
         for row in tsv_reader:
