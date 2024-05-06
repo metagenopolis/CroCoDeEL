@@ -1,6 +1,7 @@
 from typing import BinaryIO, Any, Final
 from functools import partial
 import logging
+from pathlib import Path
 from time import perf_counter
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
@@ -21,7 +22,11 @@ def run_plot_conta(args: dict[str, Any]):
 
     conta_events = list(ContaminationEventIO.read_tsv(args["conta_events_fh"]))
     if args["conta_events_fh"].mode == 'r':
-        logging.info("%d contamination events loaded", len(conta_events))
+        logging.info(
+            "%d contamination events loaded from %s",
+            len(conta_events),
+            Path(args["conta_events_fh"].name).resolve(),
+        )
     args["conta_events_fh"].close()
 
     start = perf_counter()
@@ -35,7 +40,7 @@ def run_plot_conta(args: dict[str, Any]):
         color_contamination_specific_species=args["color_conta_species"],
     ).save_to_pdf(args["pdf_report_fh"])
     logging.info("PDF report generated in %.1f seconds", np.round(perf_counter() - start, 1))
-    logging.info("PDF report saved in %s", args["pdf_report_fh"].name)
+    logging.info("PDF report saved in %s", Path(args["pdf_report_fh"].name).resolve())
     args["pdf_report_fh"].close()
 
 

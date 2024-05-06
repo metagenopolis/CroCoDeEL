@@ -2,6 +2,7 @@ from multiprocessing import Pool
 from functools import partial
 from itertools import product
 import logging
+from pathlib import Path
 from time import perf_counter
 from typing import Final, Any
 import numpy as np
@@ -40,8 +41,8 @@ def run_search_conta(args: dict[str,Any]):
     conta_events.sort(key=lambda e: e.rate, reverse=True)
     ContaminationEventIO.write_tsv(conta_events, args['conta_events_fh'])
     logging.info(
-        "Contamination events sorted by decreasing contamination rate saved in %s",
-        args["conta_events_fh"].name,
+        "Contamination events sorted by decreasing rate saved in %s",
+        Path(args["conta_events_fh"].name).resolve(),
     )
     if args["conta_events_fh"].mode == 'w':
         args["conta_events_fh"].close()
