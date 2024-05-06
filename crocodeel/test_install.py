@@ -56,6 +56,7 @@ def run_test_install(keep_results: bool) -> None:
             logging.error("Contamination events found are not those expected")
             sys.exit(1)
 
-    logging.info("Tests completed successfully")
     if not keep_results:
         logging.info("Temporary result files deleted")
+    
+    logging.info("Tests completed successfully")
