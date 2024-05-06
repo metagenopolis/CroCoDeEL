@@ -1,0 +1,22 @@
+name: Publish crocodeel
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v4
+        # see details (matrix, python-version, python-version-file, etc.)
+        # https://github.com/actions/setup-python
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v2
+      - name: Build and publish to PyPI
+        run: |
+          poetry config http-basic.pypi __token__ ${{ secrets.PYPI_TOKEN }}
+          poetry build -C crocodeel
+          poetry publish --skip-existing -C crocodeel
