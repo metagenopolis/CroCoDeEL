@@ -178,4 +178,4 @@ class ContaminationPlotsReport:
                         axs[plot_id].axis("off")
                 plt.tight_layout()
                 fig.savefig(pdf, format="pdf")
-                plt.close(fig)
+                plt.close('all')
