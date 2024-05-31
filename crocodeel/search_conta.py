@@ -47,14 +47,16 @@ def run_search_conta_distrib(args: dict[str,Any]):
     args["species_ab_table_fh_2"].close()
     species_ab_table_2 = ab_table_utils.normalize(species_ab_table_2)
 
-    if species_ab_table.shape[0] != species_ab_table_2.shape[0]:
-        logging.error('Abundance tables do not have the same number of species (%d vs %d)',
-                      species_ab_table.shape[0], species_ab_table_2.shape[0])
-        sys.exit(1)
+    species_names = set(species_ab_table.index)
+    species_names_2 = set(species_ab_table_2.index)
 
-    if not species_ab_table.index.equals(species_ab_table_2.index):
-        logging.error("Abundance tables do not have the same species names")
-        sys.exit(1)
+    if species_names != species_names_2:
+        logging.warning("Abundance tables have only %d species names in common",
+                        len(species_names.intersection(species_names_2)))
+        logging.warning("Make sure the abundance tables were generated "
+                        "with the same tool and database")
+        logging.warning("Missing abundance values ​​will be filled with zeros "
+                        "for non-shared species")
 
     start = perf_counter()
     logging.info("Search for contaminations started")
@@ -171,7 +173,9 @@ class ContaminationSearcherDriver:
             all_samples_2 = self.species_ab_table_2.columns
             all_sample_pairs = product(all_samples, all_samples_2)
             num_sample_pairs = len(all_samples) * len(all_samples_2)
-            self.species_ab_table = self.species_ab_table.join(self.species_ab_table_2)
+            self.species_ab_table = self.species_ab_table.join(
+                self.species_ab_table_2, how="outer"
+            ).fillna(0.0)
         else:
             all_samples = self.species_ab_table.columns
             all_sample_pairs = product(all_samples, repeat=2)
