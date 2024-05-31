@@ -41,12 +41,49 @@ def get_arguments() -> argparse.Namespace:
         "-v", "--version", action="version", version=f"%(prog)s version { version("crocodeel")}"
     )
 
-
     subparsers = parser.add_subparsers(
         title="positional arguments",
-        help="Select subcommand",
+        help="Select command",
         dest="command",
         required=True,
+    )
+
+    easy_wf_parser = subparsers.add_parser(
+        "easy_wf",
+        help="Search cross-sample contamination and "
+        "create a PDF report in one command.",
+    )
+    easy_wf_parser.add_argument(
+        "-s",
+        dest="species_ab_table_fh",
+        type=argparse.FileType("r"),
+        required=True,
+        metavar='SPECIES_ABUNDANCE_TABLE',
+        help="Input TSV file giving the species abundance profiles in metagenomic samples",
+    )
+    easy_wf_parser.add_argument(
+       "-c",
+        dest="conta_events_fh",
+        type=argparse.FileType("w+"),
+        required=True,
+        metavar='CONTAMINATION_EVENTS_FILE',
+        help="Output TSV file listing all contamination events",
+    )
+    easy_wf_parser.add_argument(
+        "-r",
+        dest="pdf_report_fh",
+        type=argparse.FileType("wb"),
+        required=True,
+        metavar='PDF_REPORT_FILE',
+        help="Output PDF file with scatterplots for all contamination events",
+    )
+    easy_wf_parser.add_argument(
+        "--nproc",
+        dest="nproc",
+        type=nproc,
+        default=multiprocessing.cpu_count(),
+        help="Number of parallel processes to search for contaminations "
+        "(default: %(default)d)",
     )
 
     search_conta_distrib_parser = subparsers.add_parser(
@@ -177,44 +214,6 @@ def get_arguments() -> argparse.Namespace:
         help="Use a different color for species introduced by contamination.",
     )
 
-    easy_wf_parser = subparsers.add_parser(
-        "easy_wf",
-        help="Search cross-sample contamination and "
-        "create a PDF report in one command.",
-    )
-    easy_wf_parser.add_argument(
-        "-s",
-        dest="species_ab_table_fh",
-        type=argparse.FileType("r"),
-        required=True,
-        metavar='SPECIES_ABUNDANCE_TABLE',
-        help="Input TSV file giving the species abundance profiles in metagenomic samples",
-    )
-    easy_wf_parser.add_argument(
-       "-c",
-        dest="conta_events_fh",
-        type=argparse.FileType("w+"),
-        required=True,
-        metavar='CONTAMINATION_EVENTS_FILE',
-        help="Output TSV file listing all contamination events",
-    )
-    easy_wf_parser.add_argument(
-        "-r",
-        dest="pdf_report_fh",
-        type=argparse.FileType("wb"),
-        required=True,
-        metavar='PDF_REPORT_FILE',
-        help="Output PDF file with scatterplots for all contamination events",
-    )
-    easy_wf_parser.add_argument(
-        "--nproc",
-        dest="nproc",
-        type=nproc,
-        default=multiprocessing.cpu_count(),
-        help="Number of parallel processes to search for contaminations "
-        "(default: %(default)d)",
-    )
-
     test_install_parser = subparsers.add_parser(
         "test_install", help="Test if %(prog)s is correctly installed "
         "and generates expected results"
@@ -243,7 +242,9 @@ def main() -> None:
                                          args.species_ab_table_fh_2.name)
         print(exec_desc, file = args.conta_events_fh)
 
-    if args.command == "search_conta":
+    if args.command == "easy_wf":
+        run_easy_wf(vars(args))
+    elif args.command == "search_conta":
         run_search_conta(vars(args))
     elif args.command == "search_conta_distrib":
         if args.species_ab_table_fh.name == args.species_ab_table_fh_2.name:
@@ -253,8 +254,6 @@ def main() -> None:
             run_search_conta_distrib(vars(args))
     elif args.command == "plot_conta":
         run_plot_conta(vars(args))
-    elif args.command == "easy_wf":
-        run_easy_wf(vars(args))
     elif args.command == "test_install":
         run_test_install(args.keep_results)
 
