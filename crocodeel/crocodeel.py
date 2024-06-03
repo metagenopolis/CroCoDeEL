@@ -7,7 +7,7 @@ import logging
 import multiprocessing
 from importlib.metadata import version
 from crocodeel.execution_description import ExecutionDescription
-from crocodeel.search_conta import run_search_conta, run_search_conta_distrib
+from crocodeel.search_conta import run_search_conta, run_search_conta_multi
 from crocodeel.plot_conta import run_plot_conta, Defaults as plot_conta_defaults
 from crocodeel.easy_wf import run_easy_wf
 from crocodeel.test_install import run_test_install
@@ -51,7 +51,7 @@ def get_arguments() -> argparse.Namespace:
     easy_wf_parser = subparsers.add_parser(
         "easy_wf",
         help="Search cross-sample contamination and "
-        "create a PDF report in one command.",
+        "create a PDF report in one command",
     )
     easy_wf_parser.add_argument(
         "-s",
@@ -59,7 +59,7 @@ def get_arguments() -> argparse.Namespace:
         type=argparse.FileType("r"),
         required=True,
         metavar='SPECIES_ABUNDANCE_TABLE',
-        help="Input TSV file giving the species abundance profiles in metagenomic samples",
+        help="Input TSV file corresponding to the species abundance table",
     )
     easy_wf_parser.add_argument(
        "-c",
@@ -86,18 +86,28 @@ def get_arguments() -> argparse.Namespace:
         "(default: %(default)d)",
     )
 
-    search_conta_distrib_parser = subparsers.add_parser(
+    search_conta_parser = subparsers.add_parser(
         "search_conta", help="Search cross-sample contamination"
     )
-    search_conta_distrib_parser.add_argument(
+    search_conta_parser.add_argument(
         "-s",
         dest="species_ab_table_fh",
         type=argparse.FileType("r"),
         required=True,
         metavar='SPECIES_ABUNDANCE_TABLE',
-        help="Input TSV file giving the species abundance profiles in metagenomic samples.",
+        help="Input TSV file corresponding to the species abundance table",
     )
-    search_conta_distrib_parser.add_argument(
+    search_conta_parser.add_argument(
+        "-s2",
+        dest="species_ab_table_fh_2",
+        type=argparse.FileType("r"),
+        required=False,
+        metavar='SPECIES_ABUNDANCE_TABLE_2',
+        help="Optional input TSV file corresponding to another species abundance table. "
+        "If provided, samples from this table will be considered as contamination targets "
+        "while those from the first table as contamination sources.",
+    )
+    search_conta_parser.add_argument(
         "-c",
         dest="conta_events_fh",
         type=argparse.FileType("w"),
@@ -105,7 +115,7 @@ def get_arguments() -> argparse.Namespace:
         metavar='CONTAMINATION_EVENTS_FILE',
         help="Output TSV file listing all contamination events.",
     )
-    search_conta_distrib_parser.add_argument(
+    search_conta_parser.add_argument(
         "--nproc",
         dest="nproc",
         type=nproc,
@@ -114,49 +124,11 @@ def get_arguments() -> argparse.Namespace:
         "(default: %(default)d)",
     )
 
-    search_conta_distrib_parser = subparsers.add_parser(
-        "search_conta_distrib", help="Search cross-sample contamination. "
-        "Command used in workflows to distribute computational load across multiple nodes."
-    )
-    search_conta_distrib_parser.add_argument(
-        "-s1",
-        dest="species_ab_table_fh",
-        type=argparse.FileType("r"),
-        required=True,
-        metavar='SPECIES_ABUNDANCE_TABLE',
-        help="Input TSV file giving the species abundance profiles in metagenomic samples."
-        " These samples are potential contamination sources.",
-    )
-    search_conta_distrib_parser.add_argument(
-        "-s2",
-        dest="species_ab_table_fh_2",
-        type=argparse.FileType("r"),
-        required=True,
-        metavar='SPECIES_ABUNDANCE_TABLE_2',
-        help="Input TSV file giving the species abundance profiles in metagenomic samples."
-        " These samples are potential contamination targets.",
-    )
-    search_conta_distrib_parser.add_argument(
-        "-c",
-        dest="conta_events_fh",
-        type=argparse.FileType("w"),
-        required=True,
-        metavar='CONTAMINATION_EVENTS_FILE',
-        help="Output TSV file listing all contamination events.",
-    )
-    search_conta_distrib_parser.add_argument(
-        "--nproc",
-        dest="nproc",
-        type=nproc,
-        default=multiprocessing.cpu_count(),
-        help="Number of parallel processes to search for contaminations "
-        "(default: %(default)d)",
-    )
 
     plot_conta_parser = subparsers.add_parser(
         "plot_conta",
         help="Create a PDF report with scatterplots representing "
-        "species abundance profiles for each contamination event.",
+        "species abundance profiles for each contamination event",
     )
     plot_conta_parser.add_argument(
         "-s",
@@ -164,7 +136,7 @@ def get_arguments() -> argparse.Namespace:
         type=argparse.FileType("r"),
         required=True,
         metavar='SPECIES_ABUNDANCE_TABLE',
-        help="Input TSV file giving the species abundance profiles in metagenomic samples.",
+        help="Input TSV file corresponding to the species abundance table",
     )
     plot_conta_parser.add_argument(
         "-c",
@@ -233,25 +205,28 @@ def main() -> None:
     args = get_arguments()
 
     # Add comment line in output file describing execution context
-    if args.command in ("search_conta","easy_wf"):
+    if args.command == "easy_wf":
         exec_desc = ExecutionDescription(args.species_ab_table_fh.name)
         print(exec_desc, file = args.conta_events_fh)
 
-    if args.command == "search_conta_distrib":
-        exec_desc = ExecutionDescription(args.species_ab_table_fh.name,
-                                         args.species_ab_table_fh_2.name)
+    if args.command == "search_conta":
+        if args.species_ab_table_fh_2:
+            exec_desc = ExecutionDescription(args.species_ab_table_fh.name,
+                                            args.species_ab_table_fh_2.name)
+        else:
+            exec_desc = ExecutionDescription(args.species_ab_table_fh.name)
         print(exec_desc, file = args.conta_events_fh)
 
     if args.command == "easy_wf":
         run_easy_wf(vars(args))
     elif args.command == "search_conta":
-        run_search_conta(vars(args))
-    elif args.command == "search_conta_distrib":
-        if args.species_ab_table_fh.name == args.species_ab_table_fh_2.name:
+        if args.species_ab_table_fh_2 is None :
+            run_search_conta(vars(args))
+        elif args.species_ab_table_fh.name != args.species_ab_table_fh_2.name:
+            run_search_conta_multi(vars(args))
+        else:
             args.species_ab_table_fh_2.close()
             run_search_conta(vars(args))
-        else:
-            run_search_conta_distrib(vars(args))
     elif args.command == "plot_conta":
         run_plot_conta(vars(args))
     elif args.command == "test_install":

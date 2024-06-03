@@ -38,7 +38,7 @@ def run_search_conta(args: dict[str,Any]):
 
     _save_results(conta_events,  args['conta_events_fh'])
 
-def run_search_conta_distrib(args: dict[str,Any]):
+def run_search_conta_multi(args: dict[str,Any]):
     species_ab_table = ab_table_utils.read(args["species_ab_table_fh"])
     args["species_ab_table_fh"].close()
     species_ab_table = ab_table_utils.normalize(species_ab_table)
