@@ -1,4 +1,4 @@
-from typing import BinaryIO, Any, Final
+from typing import BinaryIO, Optional, Final
 from functools import partial
 import logging
 from pathlib import Path
@@ -8,40 +8,35 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import tqdm
-from crocodeel.conta_event import ContaminationEvent, ContaminationEventIO
-from crocodeel import ab_table_utils
+from crocodeel.conta_event import ContaminationEvent
 
 
-def run_plot_conta(args: dict[str, Any]):
-    if "species_ab_table" in args:
-        species_ab_table = args["species_ab_table"]
-    else:
-        species_ab_table = ab_table_utils.read(args["species_ab_table_fh"])
-        args["species_ab_table_fh"].close()
-        species_ab_table = ab_table_utils.normalize(species_ab_table)
-
-    conta_events = list(ContaminationEventIO.read_tsv(args["conta_events_fh"]))
-    if args["conta_events_fh"].mode == 'r':
-        logging.info(
-            "%d contamination events loaded from %s",
-            len(conta_events),
-            Path(args["conta_events_fh"].name).resolve(),
-        )
-    args["conta_events_fh"].close()
+def run_plot_conta(
+    species_ab_table: pd.DataFrame,
+    species_ab_table_2: Optional[pd.DataFrame],
+    conta_events: list[ContaminationEvent],
+    pdf_report_fh: BinaryIO,
+    nrow: int,
+    ncol: int,
+    no_conta_line: bool,
+    color_conta_species: bool
+):
+    if species_ab_table_2 is not None:
+        species_ab_table = species_ab_table.join(species_ab_table_2, how="outer").fillna(0.0)
 
     start = perf_counter()
     logging.info("Generation of the PDF report started")
     ContaminationPlotsReport(
-        species_ab_table=species_ab_table,
-        conta_events=conta_events,
-        nrow=args["nrow"],
-        ncol=args["ncol"],
-        no_contamination_line=args["no_conta_line"],
-        color_contamination_specific_species=args["color_conta_species"],
-    ).save_to_pdf(args["pdf_report_fh"])
+        species_ab_table,
+        conta_events,
+        nrow,
+        ncol,
+        no_conta_line,
+        color_conta_species,
+    ).save_to_pdf(pdf_report_fh)
     logging.info("PDF report generated in %.1f seconds", np.round(perf_counter() - start, 1))
-    logging.info("PDF report saved in %s", Path(args["pdf_report_fh"].name).resolve())
-    args["pdf_report_fh"].close()
+    logging.info("PDF report saved in %s", Path(pdf_report_fh.name).resolve())
+    pdf_report_fh.close()
 
 
 class Defaults:
@@ -61,15 +56,15 @@ class ContaminationPlotsReport:
         conta_events: list[ContaminationEvent],
         nrow: int,
         ncol: int,
-        no_contamination_line: bool,
-        color_contamination_specific_species: bool,
+        no_conta_line: bool,
+        color_conta_species: bool,
     ):
         self.species_ab_table = species_ab_table
         self.conta_events = conta_events
         self.nrow = nrow
         self.ncol = ncol
-        self.no_contamination_line = no_contamination_line
-        self.color_contamination_specific_species = color_contamination_specific_species
+        self.no_conta_line = no_conta_line
+        self.color_conta_species = color_conta_species
 
         # Add pseudo_zero
         min_non_zero = self.species_ab_table[self.species_ab_table > -np.inf].min().min()
@@ -94,7 +89,7 @@ class ContaminationPlotsReport:
             facecolor="none",
         )
 
-        if self.color_contamination_specific_species:
+        if self.color_conta_species:
             edge_colors = [
                 (
                     "orange"
@@ -117,7 +112,7 @@ class ContaminationPlotsReport:
         )
 
         # Add contamination line
-        if not self.no_contamination_line:
+        if not self.no_conta_line:
             ax.axline(
                 (
                     self.pseudo_zero,

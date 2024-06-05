@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 import csv
-from typing import TextIO, Iterator
+from typing import TextIO
+from pathlib import Path
+import logging
 
 
 @dataclass
@@ -14,7 +16,7 @@ class ContaminationEvent:
 
 class ContaminationEventIO:
     @staticmethod
-    def read_tsv(fh: TextIO) -> Iterator[ContaminationEvent]:
+    def read_tsv(fh: TextIO) -> list[ContaminationEvent]:
         # Ugly hack to skip comment lines
         pos = 0
         while fh :
@@ -26,18 +28,24 @@ class ContaminationEventIO:
 
         tsv_reader = csv.DictReader(fh, delimiter="\t")
 
-        for row in tsv_reader:
-            contamination_specific_species = row[
-                "contamination_specific_species"
-            ].split(",")
-
-            yield ContaminationEvent(
+        conta_events = [
+            ContaminationEvent(
                 row["source"],
                 row["target"],
                 float(row["rate"]),
                 float(row["probability"]),
-                contamination_specific_species,
+                row["contamination_specific_species"].split(","),
             )
+            for row in tsv_reader
+        ]
+
+        logging.info(
+            "%d contamination events loaded from %s",
+            len(conta_events),
+            Path(fh.name).resolve(),
+        )
+
+        return conta_events
 
     @staticmethod
     def write_tsv(conta_events: list[ContaminationEvent], fh: TextIO) -> None:
