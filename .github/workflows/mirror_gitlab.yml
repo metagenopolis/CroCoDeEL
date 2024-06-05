@@ -12,6 +12,6 @@ jobs:
       - uses: pixta-dev/repository-mirroring-action@v1
         with:
           target_repo_url:
-            git@gitlab.com:metagenopolis/crocodeel.git
+            git@forgemia.inra.fr:metagenopolis/crocodeel.git
           ssh_private_key:
             ${{ secrets.GITLAB_SSH_PRIVATE_KEY }}
