@@ -206,7 +206,7 @@ def get_arguments() -> argparse.Namespace:
         )
 
     test_install_parser.add_argument(
-        "--keep",
+        "--keep-results",
         dest="keep_results",
         action="store_true",
         help="Keep all temporary results files.",
@@ -218,6 +218,9 @@ def get_arguments() -> argparse.Namespace:
 def main() -> None:
     set_logging()
     args = get_arguments()
+
+    if args.command == 'test_install':
+        logging.info("Running tests on the toy dataset")
 
     # Add comment line in output file describing execution context
     if args.command in ("easy_wf", "search_conta"):
@@ -246,10 +249,6 @@ def main() -> None:
         ContaminationEventIO.write_tsv(conta_events, args.conta_events_fh)
         args.conta_events_fh.close()
 
-        logging.info(
-            "Contamination events sorted by decreasing rate saved in %s",
-            Path(args.conta_events_fh.name).resolve(),
-        )
         if args.command != "test_install":
             logging.warning("Contamination events may be false positives, especially "
                             "when dealing with samples with similar species abundance profiles "

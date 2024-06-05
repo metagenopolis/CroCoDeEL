@@ -77,3 +77,8 @@ class ContaminationEventIO:
                 ),
                 file=fh,
             )
+        
+        logging.info(
+            "Contamination events saved in %s",
+            Path(fh.name).resolve(),
+        )
