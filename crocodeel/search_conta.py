@@ -57,7 +57,7 @@ class ContaminationSearcherWorker:
         self.species_ab_table = species_ab_table
         self.rf_classifier = rf_classifier
 
-    def classify_sample_pair(self, sample_pair):
+    def classify_sample_pair(self, sample_pair) -> ContaminationEvent:
         source, target = sample_pair
 
         if source == target:
@@ -128,7 +128,7 @@ class ContaminationSearcherDriver:
         self.num_sample_pairs = num_sample_pairs
         self.nproc = nproc
 
-    def search_contamination(self):
+    def search_contamination(self) -> list[ContaminationEvent]:
         rf_classifier = RandomForestModel.load()
         worker = ContaminationSearcherWorker(self.species_ab_table, rf_classifier)
 
