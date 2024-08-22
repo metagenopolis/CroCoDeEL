@@ -74,11 +74,3 @@ CroCoDeEL will probably report false contamination events for samples with simil
 For non-related samples, CroCoDeEL may occasionally generate false positives that can be filtered out by a human-expert.\
 Thus, we strongly recommend inspecting scatterplots of each contamination event to discard potential false positives.\
 _We will explain how to do it soon._
-
-## Authors
-* Lindsay Goulet: lindsay.goulet@inrae.fr
-* Florian Plaza Oñate: florian.plaza-onate@inrae.fr
-* Edi Prifti: edi.prifti@ird.fr
-* Eugeni Belda: eugeni.belda@ird.fr
-* Emmanuelle Le Chatelier: emmanuelle.le-chatelier@inrae.fr
-* Guillaume Gautreau: guillaume.gautreau@inrae.fr
