@@ -1,2 +1,4 @@
 *.joblib binary
 *.pdf binary
+*.svg binary
+*.webp binary

@@ -9,6 +9,10 @@ CroCoDeEL is a tool that detects cross-sample (aka well-to-well) contamination i
 It accurately identifies contaminated samples but also pinpoints contamination sources and estimates contamination rates.\
 CroCoDeEL relies only on species abundance tables and does not need negative controls.
 
+<p align="center">
+  <img src="docs/logos/logo.webp" width="350" height="350" alt="logo">
+</p>
+
 ## Installation
 
 CroCoDeEL is available on bioconda:
