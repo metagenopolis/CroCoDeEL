@@ -5,9 +5,9 @@
 
 ## Introduction
 
-CroCoDeEL is a tool that detects cross-sample (aka well-to-well) contamination in shotgun metagenomic data.\
+CroCoDeEL is a tool that detects cross-sample contamination (aka well-to-well leakage) in shotgun metagenomic data.\
 It accurately identifies contaminated samples but also pinpoints contamination sources and estimates contamination rates.\
-CroCoDeEL relies only on species abundance tables and does not need negative controls.
+CroCoDeEL relies only on species abundance tables and does not need negative controls nor sample position during processing (i.e. plate maps).
 
 <p align="center">
   <img src="docs/logos/logo.webp" width="350" height="350" alt="logo">
