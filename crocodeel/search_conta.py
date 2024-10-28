@@ -24,7 +24,7 @@ def run_search_conta(
         all_samples_2 = species_ab_table_2.columns
         all_sample_pairs = product(all_samples, all_samples_2)
         num_sample_pairs = len(all_samples) * len(all_samples_2)
-        species_ab_table = species_ab_table.join(species_ab_table_2, how="outer").fillna(0.0)
+        species_ab_table = species_ab_table.join(species_ab_table_2, how="outer").fillna(-np.inf)
     else:
         all_samples = species_ab_table.columns
         all_sample_pairs = product(all_samples, all_samples)
