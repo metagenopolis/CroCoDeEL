@@ -1,12 +1,11 @@
 from multiprocessing import Pool
-from functools import partial
 from itertools import product
 import logging
 from time import perf_counter
 from typing import Optional, Final
 import numpy as np
 import pandas as pd
-import tqdm
+from tqdm import tqdm
 from crocodeel.conta_event import ContaminationEvent
 from crocodeel.ressources import RandomForestModel
 from crocodeel.common import (
@@ -136,15 +135,20 @@ class ContaminationSearcherDriver:
 
         with Pool(processes=self.nproc) as pool:
             all_tasks = pool.imap_unordered(
-                worker.classify_sample_pair, self.all_sample_pairs, chunksize=self.DEFAULT_CHUNKSIZE
+                worker.classify_sample_pair,
+                self.all_sample_pairs,
+                chunksize=self.DEFAULT_CHUNKSIZE,
             )
-            pbar = partial(
-                tqdm.tqdm,
+            pbar = tqdm(
+                all_tasks,
                 total=self.num_sample_pairs,
-                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} sample pairs inspected",
+                leave=False,
+                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} sample pairs inspected{postfix}",
             )
-            for conta_event in pbar(all_tasks):
+
+            for conta_event in pbar:
                 if conta_event.probability >= ContaminationSearcherWorker.PROBABILITY_CUTOFF:
                     all_conta_events.append(conta_event)
+                    pbar.set_postfix_str(f'{len(all_conta_events)} conta events found')
 
         return all_conta_events
