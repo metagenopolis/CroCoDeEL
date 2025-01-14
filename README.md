@@ -26,7 +26,11 @@ Alternatively, you can use pip:
 pip install crocodeel
 ```
 
-Finally, you can test that CroCoDeEL is correctly installed with the following command:
+Docker and Singularity containers are also available on [BioContainers](https://biocontainers.pro/tools/crocodeel)
+
+## Installation test
+
+You can test that CroCoDeEL is correctly installed with the following command:
 ```
 crocodeel test_install
 ```
@@ -77,4 +81,4 @@ crocodeel easy_wf -s species_abundance.tsv -c contamination_events.tsv -r contam
 CroCoDeEL will probably report false contamination events for samples with similar species abundances profiles (e.g. longitudinal data, animals raised together).\
 For non-related samples, CroCoDeEL may occasionally generate false positives that can be filtered out by a human-expert.\
 Thus, we strongly recommend inspecting scatterplots of each contamination event to discard potential false positives.\
-_We will explain how to do it soon._
+Please check the [wiki](https://github.com/metagenopolis/CroCoDeEL/wiki) for more information.
