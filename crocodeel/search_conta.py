@@ -9,9 +9,9 @@ from tqdm import tqdm
 from crocodeel.conta_event import ContaminationEvent
 from crocodeel.ressources import RandomForestModel
 from crocodeel.common import (
-    select_species_potentially_in_contamination_line,
-    get_coefficients_of_potential_contamination_line,
-    compute_features
+    select_candidate_species_conta_line,
+    search_potential_conta_line,
+    compute_conta_line_features
 )
 
 
@@ -57,62 +57,75 @@ class ContaminationSearcherWorker:
         self.rf_classifier = rf_classifier
 
     def classify_sample_pair(self, sample_pair) -> ContaminationEvent:
-        source, target = sample_pair
+        source_sample_name, target_sample_name = sample_pair
 
-        if source == target:
-            return ContaminationEvent(source, target)
+        if source_sample_name == target_sample_name:
+            return ContaminationEvent(source_sample_name, target_sample_name)
 
-        # Search a potential contamination line
+        # Step 1: Selection of candidate species for a contamination line
         (
-            not_filtered_data,
-            species_potentially_in_contamination_line,
-            species_potentially_in_contamination_line_indexes,
-        ) = select_species_potentially_in_contamination_line(self.species_ab_table, source, target)
+            cur_sample_pair_species_ab,
+            candidate_species_conta_line,
+            candidate_species_conta_line_idxs,
+        ) = select_candidate_species_conta_line(
+            self.species_ab_table, source_sample_name, target_sample_name
+        )
 
         while True:
-            # Not enough species in the potential contamination line
+            # Not enough candidates species for a contamination line
             # no contamination found, exit loop
-            if species_potentially_in_contamination_line.shape[0] <= 5:
-                return ContaminationEvent(source, target)
+            if candidate_species_conta_line.shape[0] <= 5:
+                return ContaminationEvent(source_sample_name, target_sample_name)
 
-            # Run RANSAC to estimate the intercept of the potential contamination line
-            # and get inlier and outlier species
-            species_inliers, intercept = get_coefficients_of_potential_contamination_line(
-                species_potentially_in_contamination_line
+            # Step 2: Search for a potential contamination line
+            # Use RANSAC regressor to estimate its offset
+            candidate_species_inliers, conta_line_offset = search_potential_conta_line(
+                candidate_species_conta_line
             )
 
             # Not enough inlier species in the potential contamination line
             # no contamination found, exit loop
-            if np.sum(species_inliers) <= 5:
-                return ContaminationEvent(source, target)
+            if np.sum(candidate_species_inliers) <= 5:
+                return ContaminationEvent(source_sample_name, target_sample_name)
 
-            species_outliers = np.logical_not(species_inliers)
-            species_inliers_indexes = species_potentially_in_contamination_line_indexes[species_inliers]
-            species_inliers = species_potentially_in_contamination_line[species_inliers]
+            candidate_species_outliers = np.logical_not(candidate_species_inliers)
+            candidate_species_inliers_idxs = candidate_species_conta_line_idxs[
+                candidate_species_inliers
+            ]
+            candidate_species_inliers = candidate_species_conta_line[
+                candidate_species_inliers
+            ]
 
-            # Extract features describing the current sample pair and the potential contamination line
-            features = compute_features(intercept, species_inliers, not_filtered_data)
-            features = np.array([features])
+            # Step 3: Compute features describing the potential contamination line
+            conta_line_features = compute_conta_line_features(
+                conta_line_offset, candidate_species_inliers, cur_sample_pair_species_ab
+            )
+            conta_line_features = np.array([conta_line_features])
 
-            # Apply the random forest model with the extracted features
-            contamination_probability = self.rf_classifier.predict_proba(features)[0, 1]
+            # Step 4: Apply the Random Forest model to confirm the contamination event
+            conta_probability = self.rf_classifier.predict_proba(conta_line_features)
+            conta_probability = conta_probability[0, 1]
 
             # contamination found, exit loop
-            if contamination_probability >= self.PROBABILITY_CUTOFF:
-                contamination_rate = np.round(10 ** (-intercept), 4)
+            if conta_probability >= self.PROBABILITY_CUTOFF:
+                contamination_rate = np.round(10 ** (-conta_line_offset), 4)
                 return ContaminationEvent(
-                    source,
-                    target,
+                    source_sample_name,
+                    target_sample_name,
                     rate=contamination_rate,
-                    probability=contamination_probability,
-                    contamination_specific_species=species_inliers_indexes.tolist(),
+                    probability=conta_probability,
+                    contamination_specific_species=candidate_species_inliers_idxs.tolist(),
                 )
 
-            # no contamination found with inliers
-            # try with remaining outliers
-            species_potentially_in_contamination_line = species_potentially_in_contamination_line[species_outliers]
-            species_potentially_in_contamination_line_indexes = species_potentially_in_contamination_line_indexes[
-                species_outliers
+            # no contamination found with inlier species
+            # try with remaining outlier species
+            # not needed with latest version of the algorithm
+            # to be suppressed
+            candidate_species_conta_line = candidate_species_conta_line[
+                candidate_species_outliers
+            ]
+            candidate_species_conta_line_idxs = candidate_species_conta_line_idxs[
+                candidate_species_outliers
             ]
 
 
