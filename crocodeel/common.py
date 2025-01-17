@@ -5,79 +5,74 @@ from sklearn.neighbors import NearestNeighbors
 from scipy.stats import spearmanr
 
 
-def _get_mean_abundance_of_most_abundant_species_specific_to_source_sample(
+def _get_mean_ab_topN_source_specific_species(
     source_specific_species_ab,
-    intercept_specific_species_to_source_sample,
-    number_of_species=10,
+    num_species=10,
 ):
     """"""
+    assert(source_specific_species_ab.size != 0)
     source_specific_species_ab_sorted = source_specific_species_ab[
         source_specific_species_ab[:, 1].argsort()[::-1]
     ]
-    if source_specific_species_ab_sorted.shape[0] == 0:
-        return intercept_specific_species_to_source_sample
-    return (source_specific_species_ab_sorted[:number_of_species, 1]).mean()
+
+    return (source_specific_species_ab_sorted[:num_species, 1]).mean()
 
 
-def _get_distance_between_mean_abundance_of_specific_species_and_contamination_line(
-    source_specific_species_ab,
-    intercept_specific_species_to_source_sample,
-    num_species=10,
+def _get_diff_mean_ab_top10_source_specices_vs_ab_cutoff1(
+    mean_ab_top10_source_specific_species,
+    cur_sample_pair_species_ab,
+    conta_line_offset
 ):
-    mean_abundance_of_most_abundant_species_specific_to_source_sample = (
-        _get_mean_abundance_of_most_abundant_species_specific_to_source_sample(
-            source_specific_species_ab, intercept_specific_species_to_source_sample, num_species
-        )
+    # Define a pseudo zero
+    min_non_zero = np.min(
+        cur_sample_pair_species_ab[cur_sample_pair_species_ab[:, 0] != -np.inf, 0]
     )
+    pseudo_zero = min_non_zero - 1
+
+    # Named 'c1' in the paper
+    ab_cutoff1 = pseudo_zero + conta_line_offset
+
+    # '|m-c1|' in the paper
     return np.abs(
-        mean_abundance_of_most_abundant_species_specific_to_source_sample
-        - intercept_specific_species_to_source_sample
+        mean_ab_top10_source_specific_species - ab_cutoff1
     )
 
-def _get_distance_between_mean_abundance_of_specific_species_and_contamination_line2(
-    source_specific_species_ab,
-    intercept_specific_species_to_source_sample,
+
+def _get_diff_mean_ab_top10_source_specices_vs_ab_cutoff2(
+    mean_ab_top10_source_specific_species,
     candidate_species_inliers,
-    num_species=10,
 ):
-    mean_abundance_of_most_abundant_species_specific_to_source_sample = (
-        _get_mean_abundance_of_most_abundant_species_specific_to_source_sample(
-            source_specific_species_ab, intercept_specific_species_to_source_sample, num_species
-        )
-    )
-    if (
-        mean_abundance_of_most_abundant_species_specific_to_source_sample
-        == intercept_specific_species_to_source_sample
-    ):
-        return 0
-    sorted_points = candidate_species_inliers[
-        candidate_species_inliers[:, 1].argsort()
-    ]
-    if int(0.1 * len(candidate_species_inliers)) > 1:
-        num_points_to_select = int(0.1 * len(candidate_species_inliers))
-    else:
-        num_points_to_select = 1
+    # Select the 10% least abundant inlier species in the source
+    sorted_points = candidate_species_inliers[candidate_species_inliers[:, 1].argsort()]
+    num_points_to_select = max(int((0.1 * len(candidate_species_inliers))),1)
     selected_points = sorted_points[:num_points_to_select]
+
+    # Mean abundance of the 10% least abundant inlier species in the source
+    # Named 'c2' in the paper
+    ab_cutoff2 = np.mean(selected_points[:, 1])
+
+    # '|m-c2|' in the paper
     return np.abs(
-        mean_abundance_of_most_abundant_species_specific_to_source_sample - np.mean(selected_points[:, 1])
+        mean_ab_top10_source_specific_species - ab_cutoff2
     )
 
-def _get_mean_distance_to_nearest_neighbors(data, number_of_neighbors=5):
+
+def _get_mean_distance_to_nearest_neighbors(data, num_neighbors=5):
     """"""
-    if data.shape[0] < number_of_neighbors:
-        number_of_neighbors = data.shape[0]
-    neighbors_model = NearestNeighbors(n_neighbors=number_of_neighbors)
+    if data.shape[0] < num_neighbors:
+        num_neighbors = data.shape[0]
+    neighbors_model = NearestNeighbors(n_neighbors=num_neighbors)
     neighbors_model.fit(data)
     nearest_neighbors_distances, _ = neighbors_model.kneighbors(data)
     return nearest_neighbors_distances.mean().mean()
 
-def _get_mean_distance_to_farthest_neighbors(data, number_of_neighbors=5):
+def _get_mean_distance_to_farthest_neighbors(data, num_neighbors=5):
     """"""
     neighbors_model = NearestNeighbors(n_neighbors=data.shape[0])
     neighbors_model.fit(data)
     distances, _ = neighbors_model.kneighbors(data)
     sorted_distances = np.sort(distances)
-    farthest_neighbors_distances = sorted_distances[:, -number_of_neighbors:]
+    farthest_neighbors_distances = sorted_distances[:, -num_neighbors:]
     return farthest_neighbors_distances.mean().mean()
 
 
@@ -98,48 +93,40 @@ def compute_conta_line_features(
     ]
     num_shared_species = shared_species_ab.shape[0]
 
-    #
+    # Feature 1
     num_species_conta_line = candidate_species_inliers.shape[0]
+
+    # Feature 2
     ratio_species_conta_line_to_shared_species = (
         num_species_conta_line / num_shared_species
     )
+
+    # Feature 8
     num_species_above_conta_line = np.sum(
         shared_species_ab[:, 1] > shared_species_ab[:, 0] + conta_line_offset + 0.2
     )
+
+    # Feature 7
     ratio_species_above_line_to_shared_species = (
         num_species_above_conta_line / num_shared_species
     )
 
-    #
+    # Feature 3
     mean_distance_to_nearest_neighbors = _get_mean_distance_to_nearest_neighbors(
         candidate_species_inliers
     )
+
+    # Feature 4
     mean_distance_to_farthest_neighbors = _get_mean_distance_to_farthest_neighbors(
         candidate_species_inliers
     )
 
-    #
-    pseudo_zero = np.min(cur_sample_pair_species_ab[cur_sample_pair_species_ab[:, 0] != -np.inf, 0]) - 1
-    intercept_specific_species_to_source_sample = pseudo_zero + conta_line_offset
-    distance_between_mean_abundance_of_specific_species_and_contamination_line = (
-        _get_distance_between_mean_abundance_of_specific_species_and_contamination_line(
-            source_specific_species_ab, intercept_specific_species_to_source_sample
-        )
-    )
-    distance_between_mean_abundance_of_specific_species_and_contamination_line2 = (
-        _get_distance_between_mean_abundance_of_specific_species_and_contamination_line2(
-            source_specific_species_ab,
-            intercept_specific_species_to_source_sample,
-            candidate_species_inliers,
-        )
-    )
-
-    #
-    correlation_spearman_all_species = spearmanr(
+    # Feature 5
+    spearman_corr_all_species = spearmanr(
         cur_sample_pair_species_ab[:, 0], cur_sample_pair_species_ab[:, 1]
     )[0]
 
-    #
+    # Feature 6
     distances = np.abs(
         candidate_species_inliers[:, 1]
         - candidate_species_inliers[:, 0]
@@ -147,17 +134,47 @@ def compute_conta_line_features(
     ) / np.sqrt(2)
     mean_distance_to_the_contamination_line = distances.mean()
 
+    # Case where features 9 and 10 cannot be calculated
+    if (source_specific_species_ab.size == 0):
+        diff_mean_ab_top10_source_specices_vs_ab_cutoff1 = 0
+        diff_mean_ab_top10_source_specices_vs_ab_cutoff2 = 0
+    else:
+        # Mean abundance in the source of the 10 most abundant species in the source
+        # Named 'm' in the paper
+        mean_ab_top10_source_specific_species = (
+            _get_mean_ab_topN_source_specific_species(
+                source_specific_species_ab
+            )
+        )
+
+        # Feature 9
+        diff_mean_ab_top10_source_specices_vs_ab_cutoff1 = (
+            _get_diff_mean_ab_top10_source_specices_vs_ab_cutoff1(
+                mean_ab_top10_source_specific_species,
+                cur_sample_pair_species_ab,
+                conta_line_offset,
+            )
+        )
+
+        # Feature 10
+        diff_mean_ab_top10_source_specices_vs_ab_cutoff2 = (
+            _get_diff_mean_ab_top10_source_specices_vs_ab_cutoff2(
+                mean_ab_top10_source_specific_species,
+                candidate_species_inliers,
+            )
+        )
+
     return (
         ratio_species_conta_line_to_shared_species,
         ratio_species_above_line_to_shared_species,
         num_species_conta_line,
         num_species_above_conta_line,
-        correlation_spearman_all_species,
+        spearman_corr_all_species,
         mean_distance_to_the_contamination_line,
         mean_distance_to_nearest_neighbors,
         mean_distance_to_farthest_neighbors,
-        distance_between_mean_abundance_of_specific_species_and_contamination_line,
-        distance_between_mean_abundance_of_specific_species_and_contamination_line2,
+        diff_mean_ab_top10_source_specices_vs_ab_cutoff1,
+        diff_mean_ab_top10_source_specices_vs_ab_cutoff2,
     )
 
 
