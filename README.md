@@ -39,6 +39,7 @@ crocodeel test_install
 ### Input
 CroCoDeEL takes as input a species abundance table in TSV format.\
 The first column should correspond to species names. The other columns correspond to the abundance of species in each sample.
+An example is available [here](crocodeel/test_data/mgs_profiles_test.tsv).
 
 |   species_name  | sample1 | sample2 | sample3 |    ...   | 
 |:----------------|:-------:|:-------:|:-------:|:--------:| 
@@ -62,6 +63,7 @@ crocodeel search_conta -s species_abundance.tsv -c contamination_events.tsv
 CroCoDeEL will report all detected contamination events in the _contamination_events.tsv_ output file.\
 This TSV file reports for each event the contamination source, the contaminated sample (target) and the estimated contamination rate.\
 The score (probability) computed by the Random Forest model as well as species specifically introduced by contamination in the target are also given.
+An example is available [here](crocodeel/test_data/results/contamination_events.tsv).
 
 ### Visualization of the results
 Contaminations events can be visually inspected by generating a PDF file consisting in scatterplots.
@@ -70,6 +72,7 @@ crocodeel plot_conta -s species_abundance.tsv -c contamination_events.tsv -r con
 ```
 Each scatterplot compares in a log-scale the species abundance profiles of a contaminated sample (x-axis) and its contamination source (y-axis).\
 The contamination line (in red) highlights species specifically introduced by contamination.
+An example is available [here](crocodeel/test_data/results/contamination_events.pdf).
 
 ### Easy workflow
 Alternatively, you can search for cross-sample contamination and create the PDF report in one command.
