@@ -133,7 +133,11 @@ class ContaminationSearcherDriver:
     DEFAULT_CHUNKSIZE: Final[int] = 50
 
     def __init__(
-        self, species_ab_table: pd.DataFrame, all_sample_pairs, num_sample_pairs: int, nproc: int = 1
+        self,
+        species_ab_table: pd.DataFrame,
+        all_sample_pairs,
+        num_sample_pairs: int,
+        nproc: int = 1,
     ):
         self.species_ab_table = species_ab_table
         self.all_sample_pairs = all_sample_pairs

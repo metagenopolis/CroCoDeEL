@@ -5,12 +5,12 @@ from sklearn.neighbors import NearestNeighbors
 from scipy.stats import spearmanr
 
 
-def _get_mean_ab_topN_source_specific_species(
+def _get_mean_ab_top_source_specific_species(
     source_specific_species_ab,
     num_species=10,
 ):
     """"""
-    assert(source_specific_species_ab.size != 0)
+    assert source_specific_species_ab.size != 0
     source_specific_species_ab_sorted = source_specific_species_ab[
         source_specific_species_ab[:, 1].argsort()[::-1]
     ]
@@ -135,14 +135,14 @@ def compute_conta_line_features(
     mean_distance_to_the_contamination_line = distances.mean()
 
     # Case where features 9 and 10 cannot be calculated
-    if (source_specific_species_ab.size == 0):
+    if source_specific_species_ab.size == 0:
         diff_mean_ab_top10_source_specices_vs_ab_cutoff1 = 0
         diff_mean_ab_top10_source_specices_vs_ab_cutoff2 = 0
     else:
         # Mean abundance in the source of the 10 most abundant species in the source
         # Named 'm' in the paper
         mean_ab_top10_source_specific_species = (
-            _get_mean_ab_topN_source_specific_species(
+            _get_mean_ab_top_source_specific_species(
                 source_specific_species_ab
             )
         )
