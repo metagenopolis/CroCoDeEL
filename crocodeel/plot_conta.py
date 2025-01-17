@@ -1,5 +1,4 @@
 from typing import BinaryIO, Optional, Final
-from functools import partial
 import logging
 from pathlib import Path
 from time import perf_counter
@@ -7,7 +6,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import tqdm
+from tqdm import tqdm
 from crocodeel.conta_event import ContaminationEvent
 
 
@@ -152,12 +151,13 @@ class ContaminationPlotsReport:
             np.ceil(float(len(self.conta_events) / num_plots_per_page))
         )
         with PdfPages(pdf_fh) as pdf:
-            pbar = partial(
-                tqdm.tqdm,
+            pbar = tqdm(
+                range(num_pages),
                 total=num_pages,
+                leave=False,
                 bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} pages generated",
             )
-            for page in pbar(range(num_pages)):
+            for page in pbar:
                 fig = plt.figure()
                 fig, axs = plt.subplots(
                     self.nrow, self.ncol, figsize=(4 * self.ncol, 4 * self.nrow)
