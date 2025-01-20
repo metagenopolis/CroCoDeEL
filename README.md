@@ -50,20 +50,31 @@ An example is available [here](crocodeel/test_data/mgs_profiles_test.tsv).
 CroCoDeEL works with relative abundances.
 The table will automatically be normalized so the abundance of each column equals 1.
 
-**Important**: CroCoDeEL requires the abundance of subdominant species to be accurately estimated.\
+**Important**: CroCoDeEL requires accurate estimation of the abundance of subdominant species.\
 We strongly recommend using [the Meteor software suite](https://github.com/metagenopolis/meteor) to generate the species abundance table.\
-Alternatively, you can use [sylph](https://github.com/bluenote-1577/sylph) although low-level contaminations may go unnoticed.\
-We advise against the use of other taxonomic profilers (e.g. MetaPhlan4 or mOTUs) that do not meet this requirement according to our benchmarks.
+Alternatively, MetaPhlan4 can be used, although it will fail to detect low-level contaminations.
+We advise against using other taxonomic profilers that, according to our benchmarks, do not meet this requirement.
 
-### Search contamination
-Run the following command to search for cross-sample contamination:
+### Search for contamination
+Run the following command to identify cross-sample contamination:
 ```
 crocodeel search_conta -s species_abundance.tsv -c contamination_events.tsv
 ```
-CroCoDeEL will report all detected contamination events in the _contamination_events.tsv_ output file.\
-This TSV file reports for each event the contamination source, the contaminated sample (target) and the estimated contamination rate.\
-The score (probability) computed by the Random Forest model as well as species specifically introduced by contamination in the target are also given.\
-An example is available [here](crocodeel/test_data/results/contamination_events.tsv).
+CroCoDeEL will output all detected contamination events in the file _contamination_events.tsv_.\
+This TSV file includes the following details for each contamination event:
+- The contamination source
+- The contaminated sample (target)
+- The estimated contamination rate
+- The score (probability) computed by the Random Forest model
+- The species specifically introduced into the target by contamination
+
+An example output file is available [here](crocodeel/test_data/results/contamination_events.tsv).
+
+If you are using MetaPhlan4, we strongly recommend filtering out low-abundance species to improve CroCoDeEL's sensitivity.\
+Use the _--filter-low-ab_ option as shown below:
+```
+crocodeel search_conta -s species_abundance.tsv --filter-low-ab 20 -c contamination_events.tsv
+```
 
 ### Visualization of the results
 Contaminations events can be visually inspected by generating a PDF file consisting in scatterplots.
