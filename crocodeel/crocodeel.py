@@ -101,6 +101,20 @@ def get_arguments() -> argparse.Namespace:
             "If provided, samples from this table will be considered as contamination targets "
             "while those from the first table as contamination sources.",
         )
+        cur_parser.add_argument(
+            "--filter-low-ab",
+            dest="filtering_ab_thr_factor",
+            type=float,
+            required=False,
+            default=None,
+            metavar="AB_THRESHOLD_FACTOR",
+            help=argparse.SUPPRESS
+            if cur_parser == test_install_parser
+            else "Filter out low-abundance species that may be inaccurately quantified. "
+            "In each sample, set the abundance of species to zero if they are up to "
+            "%(metavar)s times more abundant than the least abundant species .  "
+            "Recommended value for MetaPhlAn4: 20 (default: None)",
+        )
 
     for cur_parser in search_conta_parser, easy_wf_parser, test_install_parser:
         cur_parser.add_argument(
@@ -224,21 +238,32 @@ def main() -> None:
 
     # Add comment line in output file describing execution context
     if args.command in ("easy_wf", "search_conta"):
-        exec_desc = ExecutionDescription(args.species_ab_table_fh, args.species_ab_table_fh_2)
+        exec_desc = ExecutionDescription(
+            args.species_ab_table_fh,
+            args.species_ab_table_fh_2,
+            args.filtering_ab_thr_factor,
+        )
         print(exec_desc, file=args.conta_events_fh)
 
     # Load first species abundance table
-    species_ab_table = ab_table_utils.read_and_normalize(args.species_ab_table_fh)
+    species_ab_table = ab_table_utils.read_filter_normalize(
+        args.species_ab_table_fh,
+        args.filtering_ab_thr_factor,
+    )
     args.species_ab_table_fh.close()
 
     # Load second species abundance table if necessary
     species_ab_table_2 = None
     if args.species_ab_table_fh_2 is not None:
         if args.species_ab_table_fh.name != args.species_ab_table_fh_2.name:
-            species_ab_table_2 = ab_table_utils.read_and_normalize(
-                args.species_ab_table_fh_2
+            species_ab_table_2 = ab_table_utils.read_filter_normalize(
+                args.species_ab_table_fh_2,
+                args.filtering_ab_thr_factor,
             )
-            ab_table_utils.compare_species_names(species_ab_table, species_ab_table_2)
+            ab_table_utils.compare_species_names(
+                species_ab_table,
+                species_ab_table_2,
+            )
         args.species_ab_table_fh_2.close()
 
     # Search and save contamination events

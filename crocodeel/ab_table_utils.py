@@ -1,6 +1,6 @@
 import logging
 import sys
-from typing import TextIO
+from typing import TextIO, Optional
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -8,8 +8,8 @@ import pandas as pd
 
 def read(fh: TextIO) -> pd.DataFrame:
     # Read table
-    logging.info('Reading %s', Path(fh.name).resolve())
-    species_ab_table = pd.read_csv(fh, sep="\t", header=0, index_col=0)
+    logging.info("Reading %s", Path(fh.name).resolve())
+    species_ab_table = pd.read_csv(fh, sep="\t", header=0, index_col=0, comment="#")
     logging.info(
         "Abundance table quantifies %d species in %d samples",
         species_ab_table.shape[0],
@@ -44,6 +44,7 @@ def read(fh: TextIO) -> pd.DataFrame:
 
     return species_ab_table
 
+
 def normalize(species_ab_table: pd.DataFrame) -> pd.DataFrame :
     # Normalize to relative abundance
     species_ab_table = species_ab_table.div(species_ab_table.sum(axis=0), axis=1)
@@ -55,9 +56,26 @@ def normalize(species_ab_table: pd.DataFrame) -> pd.DataFrame :
     logging.info("Species abundance table normalized and log-transformed")
     return species_ab_table
 
-def read_and_normalize(fh: TextIO) -> pd.DataFrame :
+
+def filter_low_ab(
+    species_ab_table: pd.DataFrame, filtering_ab_thr_factor: float
+) -> pd.DataFrame:
+    species_ab_table = species_ab_table.apply(
+        lambda ab: np.where(ab <= filtering_ab_thr_factor * ab[ab > 0].min(), 0, ab)
+    )
+    logging.info("Low-abundance species filtered out")
+
+    return species_ab_table
+
+
+def read_filter_normalize(
+    fh: TextIO, filtering_ab_thr_factor: Optional[float]
+) -> pd.DataFrame:
     species_ab_table = read(fh)
+    if filtering_ab_thr_factor is not None:
+        species_ab_table = filter_low_ab(species_ab_table, filtering_ab_thr_factor)
     species_ab_table = normalize(species_ab_table)
+
     return species_ab_table
 
 
