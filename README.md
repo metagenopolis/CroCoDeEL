@@ -85,3 +85,7 @@ CroCoDeEL will probably report false contamination events for samples with simil
 For non-related samples, CroCoDeEL may occasionally generate false positives that can be filtered out by a human-expert.\
 Thus, we strongly recommend inspecting scatterplots of each contamination event to discard potential false positives.\
 Please check the [wiki](https://github.com/metagenopolis/CroCoDeEL/wiki) for more information.
+
+## Citation
+If you find CroCoDeEL useful, please cite:\
+Goulet, L. et al. "CroCoDeEL: Accurate control-free detection of cross-sample contamination in metagenomic data." *bioRxiv* (2025). [https://doi.org/10.1101/2025.01.15.633153](https://doi.org/10.1101/2025.01.15.633153).
