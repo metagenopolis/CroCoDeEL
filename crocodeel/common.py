@@ -11,11 +11,15 @@ def _get_mean_ab_top_source_specific_species(
 ):
     """"""
     assert source_specific_species_ab.size != 0
-    source_specific_species_ab_sorted = source_specific_species_ab[
-        source_specific_species_ab[:, 1].argsort()[::-1]
-    ]
 
-    return (source_specific_species_ab_sorted[:num_species, 1]).mean()
+    # Abundance of source specific species in the source
+    values = source_specific_species_ab[:, 1]
+
+    if len(values) <= num_species:
+        return values.mean()
+
+    top_n_idx = np.argpartition(-values, num_species)[:num_species]
+    return values[top_n_idx].mean()
 
 
 def _get_diff_mean_ab_top10_source_species_vs_ab_cutoff1(
@@ -33,28 +37,26 @@ def _get_diff_mean_ab_top10_source_species_vs_ab_cutoff1(
     ab_cutoff1 = pseudo_zero + conta_line_offset
 
     # '|m-c1|' in the paper
-    return np.abs(
-        mean_ab_top10_source_specific_species - ab_cutoff1
-    )
+    return np.abs(mean_ab_top10_source_specific_species - ab_cutoff1)
 
 
 def _get_diff_mean_ab_top10_source_species_vs_ab_cutoff2(
     mean_ab_top10_source_specific_species,
     candidate_species_inliers,
 ):
-    # Select the 10% least abundant inlier species in the source
-    sorted_points = candidate_species_inliers[candidate_species_inliers[:, 1].argsort()]
-    num_points_to_select = max(int((0.1 * len(candidate_species_inliers))),1)
-    selected_points = sorted_points[:num_points_to_select]
+    # Abundance of inliers in the source
+    values = candidate_species_inliers[:, 1]
 
-    # Mean abundance of the 10% least abundant inlier species in the source
+    # Select the 10% least abundant species
+    num_species = max(int((0.1 * len(values))), 1)
+    idx = np.argpartition(values, num_species)[:num_species]
+
+    # Mean abundance of these species
     # Named 'c2' in the paper
-    ab_cutoff2 = np.mean(selected_points[:, 1])
+    ab_cutoff2 = values[idx].mean()
 
     # '|m-c2|' in the paper
-    return np.abs(
-        mean_ab_top10_source_specific_species - ab_cutoff2
-    )
+    return np.abs(mean_ab_top10_source_specific_species - ab_cutoff2)
 
 
 def _get_mean_distance_to_nearest_neighbors(data, num_neighbors=5):
