@@ -18,7 +18,7 @@ def _get_mean_ab_top_source_specific_species(
     return (source_specific_species_ab_sorted[:num_species, 1]).mean()
 
 
-def _get_diff_mean_ab_top10_source_specices_vs_ab_cutoff1(
+def _get_diff_mean_ab_top10_source_species_vs_ab_cutoff1(
     mean_ab_top10_source_specific_species,
     cur_sample_pair_species_ab,
     conta_line_offset
@@ -38,7 +38,7 @@ def _get_diff_mean_ab_top10_source_specices_vs_ab_cutoff1(
     )
 
 
-def _get_diff_mean_ab_top10_source_specices_vs_ab_cutoff2(
+def _get_diff_mean_ab_top10_source_species_vs_ab_cutoff2(
     mean_ab_top10_source_specific_species,
     candidate_species_inliers,
 ):
@@ -136,8 +136,8 @@ def compute_conta_line_features(
 
     # Case where features 9 and 10 cannot be calculated
     if source_specific_species_ab.size == 0:
-        diff_mean_ab_top10_source_specices_vs_ab_cutoff1 = 0
-        diff_mean_ab_top10_source_specices_vs_ab_cutoff2 = 0
+        diff_mean_ab_top10_source_species_vs_ab_cutoff1 = 0
+        diff_mean_ab_top10_source_species_vs_ab_cutoff2 = 0
     else:
         # Mean abundance in the source of the 10 most abundant species in the source
         # Named 'm' in the paper
@@ -148,8 +148,8 @@ def compute_conta_line_features(
         )
 
         # Feature 9
-        diff_mean_ab_top10_source_specices_vs_ab_cutoff1 = (
-            _get_diff_mean_ab_top10_source_specices_vs_ab_cutoff1(
+        diff_mean_ab_top10_source_species_vs_ab_cutoff1 = (
+            _get_diff_mean_ab_top10_source_species_vs_ab_cutoff1(
                 mean_ab_top10_source_specific_species,
                 cur_sample_pair_species_ab,
                 conta_line_offset,
@@ -157,8 +157,8 @@ def compute_conta_line_features(
         )
 
         # Feature 10
-        diff_mean_ab_top10_source_specices_vs_ab_cutoff2 = (
-            _get_diff_mean_ab_top10_source_specices_vs_ab_cutoff2(
+        diff_mean_ab_top10_source_species_vs_ab_cutoff2 = (
+            _get_diff_mean_ab_top10_source_species_vs_ab_cutoff2(
                 mean_ab_top10_source_specific_species,
                 candidate_species_inliers,
             )
@@ -173,8 +173,8 @@ def compute_conta_line_features(
         mean_distance_to_the_contamination_line,
         mean_distance_to_nearest_neighbors,
         mean_distance_to_farthest_neighbors,
-        diff_mean_ab_top10_source_specices_vs_ab_cutoff1,
-        diff_mean_ab_top10_source_specices_vs_ab_cutoff2,
+        diff_mean_ab_top10_source_species_vs_ab_cutoff1,
+        diff_mean_ab_top10_source_species_vs_ab_cutoff2,
     )
 
 
