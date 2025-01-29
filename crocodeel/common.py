@@ -73,8 +73,7 @@ def _get_mean_distance_to_farthest_neighbors(data, num_neighbors=5):
     neighbors_model = NearestNeighbors(n_neighbors=data.shape[0])
     neighbors_model.fit(data)
     distances, _ = neighbors_model.kneighbors(data)
-    sorted_distances = np.sort(distances)
-    farthest_neighbors_distances = sorted_distances[:, -num_neighbors:]
+    farthest_neighbors_distances = distances[:, -num_neighbors:]
     return farthest_neighbors_distances.mean().mean()
 
 
