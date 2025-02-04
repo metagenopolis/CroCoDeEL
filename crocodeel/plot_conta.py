@@ -158,7 +158,6 @@ class ContaminationPlotsReport:
                 bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} pages generated",
             )
             for page in pbar:
-                fig = plt.figure()
                 fig, axs = plt.subplots(
                     self.nrow, self.ncol, figsize=(4 * self.ncol, 4 * self.nrow)
                 )
