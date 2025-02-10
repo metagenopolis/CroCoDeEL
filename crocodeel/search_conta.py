@@ -72,7 +72,7 @@ class ContaminationSearcherWorker:
         )
 
         # Not enough candidates species for a contamination line
-        # no contamination found, exit loop
+        # no contamination found, exit
         if candidate_species_conta_line.shape[0] <= 5:
             return ContaminationEvent(source_sample_name, target_sample_name)
 
@@ -83,7 +83,7 @@ class ContaminationSearcherWorker:
         )
 
         # Not enough inlier species in the potential contamination line
-        # no contamination found, exit loop
+        # no contamination found, exit
         if np.sum(candidate_species_inliers) <= 5:
             return ContaminationEvent(source_sample_name, target_sample_name)
 
