@@ -53,7 +53,7 @@ The table will automatically be normalized so the abundance of each column equal
 
 **Important**: CroCoDeEL requires accurate estimation of the abundance of subdominant species.\
 We strongly recommend using [the Meteor software suite](https://github.com/metagenopolis/meteor) to generate the species abundance table.\
-Alternatively, MetaPhlan4 can be used, although it will fail to detect low-level contaminations.
+Alternatively, MetaPhlan4 can be used (parameter: --tax\_level t), although it will fail to detect low-level contaminations.\
 We advise against using other taxonomic profilers that, according to our benchmarks, do not meet this requirement.
 
 ### Search for contamination
@@ -100,4 +100,4 @@ Please check the [wiki](https://github.com/metagenopolis/CroCoDeEL/wiki) for mor
 
 ## Citation
 If you find CroCoDeEL useful, please cite:\
-Goulet, L. et al. "CroCoDeEL: Accurate control-free detection of cross-sample contamination in metagenomic data." *bioRxiv* (2025). [https://doi.org/10.1101/2025.01.15.633153](https://doi.org/10.1101/2025.01.15.633153).
+Goulet, L. et al. "CroCoDeEL: accurate control-free detection of cross-sample contamination in metagenomic data" *bioRxiv* (2025). [https://doi.org/10.1101/2025.01.15.633153](https://doi.org/10.1101/2025.01.15.633153).
