@@ -71,62 +71,47 @@ class ContaminationSearcherWorker:
             self.species_ab_table, source_sample_name, target_sample_name
         )
 
-        while True:
-            # Not enough candidates species for a contamination line
-            # no contamination found, exit loop
-            if candidate_species_conta_line.shape[0] <= 5:
-                return ContaminationEvent(source_sample_name, target_sample_name)
+        # Not enough candidates species for a contamination line
+        # no contamination found, exit
+        if candidate_species_conta_line.shape[0] <= 5:
+            return ContaminationEvent(source_sample_name, target_sample_name)
 
-            # Step 2: Search for a potential contamination line
-            # Use RANSAC regressor to estimate its offset
-            candidate_species_inliers, conta_line_offset = search_potential_conta_line(
-                candidate_species_conta_line
-            )
+        # Step 2: Search for a potential contamination line
+        # Use RANSAC regressor to estimate its offset
+        candidate_species_inliers, conta_line_offset = search_potential_conta_line(
+            candidate_species_conta_line
+        )
 
-            # Not enough inlier species in the potential contamination line
-            # no contamination found, exit loop
-            if np.sum(candidate_species_inliers) <= 5:
-                return ContaminationEvent(source_sample_name, target_sample_name)
+        # Not enough inlier species in the potential contamination line
+        # no contamination found, exit
+        if np.sum(candidate_species_inliers) <= 5:
+            return ContaminationEvent(source_sample_name, target_sample_name)
 
-            candidate_species_outliers = np.logical_not(candidate_species_inliers)
-            candidate_species_inliers_idxs = candidate_species_conta_line_idxs[
-                candidate_species_inliers
-            ]
-            candidate_species_inliers = candidate_species_conta_line[
-                candidate_species_inliers
-            ]
+        candidate_species_inliers_idxs = candidate_species_conta_line_idxs[
+            candidate_species_inliers
+        ]
+        candidate_species_inliers = candidate_species_conta_line[
+            candidate_species_inliers
+        ]
 
-            # Step 3: Compute features describing the potential contamination line
-            conta_line_features = compute_conta_line_features(
-                conta_line_offset, candidate_species_inliers, cur_sample_pair_species_ab
-            )
-            conta_line_features = np.array([conta_line_features])
+        # Step 3: Compute features describing the potential contamination line
+        conta_line_features = compute_conta_line_features(
+            conta_line_offset, candidate_species_inliers, cur_sample_pair_species_ab
+        )
+        conta_line_features = np.array([conta_line_features])
 
-            # Step 4: Apply the Random Forest model to confirm the contamination event
-            conta_probability = self.rf_classifier.predict_proba(conta_line_features)
-            conta_probability = conta_probability[0, 1]
+        # Step 4: Apply the Random Forest model to confirm the contamination event
+        conta_probability = self.rf_classifier.predict_proba(conta_line_features)
+        conta_probability = conta_probability[0, 1]
 
-            # contamination found, exit loop
-            if conta_probability >= self.PROBABILITY_CUTOFF:
-                contamination_rate = np.round(10 ** (-conta_line_offset), 4)
-                return ContaminationEvent(
-                    source_sample_name,
-                    target_sample_name,
-                    rate=contamination_rate,
-                    probability=conta_probability,
-                    contamination_specific_species=candidate_species_inliers_idxs.tolist(),
-                )
-
-            # no contamination found with inlier species
-            # try with remaining outlier species
-            # not needed with latest version of the algorithm
-            # to be suppressed
-            candidate_species_conta_line = candidate_species_conta_line[
-                candidate_species_outliers
-            ]
-            candidate_species_conta_line_idxs = candidate_species_conta_line_idxs[
-                candidate_species_outliers
-            ]
+        contamination_rate = np.round(10 ** (-conta_line_offset), 4)
+        return ContaminationEvent(
+            source_sample_name,
+            target_sample_name,
+            rate=contamination_rate,
+            probability=conta_probability,
+            contamination_specific_species=candidate_species_inliers_idxs.tolist(),
+        )
 
 
 class ContaminationSearcherDriver:
