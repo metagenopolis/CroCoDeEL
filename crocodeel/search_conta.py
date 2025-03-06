@@ -2,7 +2,7 @@ from multiprocessing import Pool
 from itertools import product
 import logging
 from time import perf_counter
-from typing import Optional, Final
+from typing import Optional, Final, Iterator
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -52,11 +52,11 @@ def run_search_conta(
 class ContaminationSearcherWorker:
     PROBABILITY_CUTOFF: Final[float] = 0.5
 
-    def __init__(self, species_ab_table, rf_classifier):
+    def __init__(self, species_ab_table: pd.DataFrame, rf_classifier):
         self.species_ab_table = species_ab_table
         self.rf_classifier = rf_classifier
 
-    def classify_sample_pair(self, sample_pair) -> ContaminationEvent:
+    def classify_sample_pair(self, sample_pair: tuple[str, str]) -> ContaminationEvent:
         source_sample_name, target_sample_name = sample_pair
 
         if source_sample_name == target_sample_name:
@@ -120,7 +120,7 @@ class ContaminationSearcherDriver:
     def __init__(
         self,
         species_ab_table: pd.DataFrame,
-        all_sample_pairs,
+        all_sample_pairs: Iterator[tuple[str, str]],
         num_sample_pairs: int,
         nproc: int = 1,
     ):

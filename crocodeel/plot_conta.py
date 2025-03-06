@@ -4,6 +4,7 @@ from pathlib import Path
 from time import perf_counter
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
@@ -70,7 +71,7 @@ class ContaminationPlotsReport:
         self.pseudo_zero = int(np.floor(min_non_zero))
         self.species_ab_table.replace(-np.inf, self.pseudo_zero, inplace=True)
 
-    def _create_plot(self, conta_event: ContaminationEvent, ax) -> None:
+    def _create_plot(self, conta_event: ContaminationEvent, ax: Axes) -> None:
         spearman_rho = self.species_ab_table[conta_event.target].corr(
             self.species_ab_table[conta_event.source], method="spearman"
         )
@@ -103,7 +104,7 @@ class ContaminationPlotsReport:
 
         # Add identity line line
         ax.axline(
-            [self.pseudo_zero, self.pseudo_zero],
+            (self.pseudo_zero, self.pseudo_zero),
             slope=1,
             color="grey",
             linestyle="-",
