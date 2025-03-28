@@ -31,10 +31,12 @@ Docker and Singularity containers are also available on [BioContainers](https://
 
 ## Installation test
 
-You can test that CroCoDeEL is correctly installed with the following command:
+To verify that CroCoDeEL is installed correctly, run the following command:  
 ```
 crocodeel test_install
 ```
+This command runs CroCoDeEL on a toy dataset and checks whether the generated results match the expected ones.  
+To inspect the results, you can rerun the command with the `--keep-results` parameter.
 
 ## Quick start
 ### Input
@@ -97,6 +99,18 @@ CroCoDeEL will probably report false contamination events for samples with simil
 For non-related samples, CroCoDeEL may occasionally generate false positives that can be filtered out by a human-expert.\
 Thus, we strongly recommend inspecting scatterplots of each contamination event to discard potential false positives.\
 Please check the [wiki](https://github.com/metagenopolis/CroCoDeEL/wiki) for more information.
+
+### Reproduce results of the paper
+Species abundance tables of the training, validation and test datasets are available in this [repository](https://doi.org/10.57745/N6JSHQ).  
+You can use CroCoDeEL to analyze these tables and reproduce the results presented in the paper.  
+For example, to process Plate 3 from the Lou et al. dataset, first download the species abundance table:  
+```
+wget --content-disposition 'https://entrepot.recherche.data.gouv.fr/api/access/datafile/:persistentId?persistentId=doi:10.57745/BH1RKY'
+```
+and then run CroCoDeEL:  
+```
+crocodeel easy_wf -s PRJNA698986_P3.meteor.tab -c PRJNA698986_P3.meteor.crocodeel.tsv -r PRJNA698986_P3.meteor.crocodeel.pdf
+```
 
 ## Citation
 If you find CroCoDeEL useful, please cite:\
