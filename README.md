@@ -22,7 +22,7 @@ conda create --name crocodeel_env -c conda-forge -c bioconda crocodeel
 conda activate crocodeel_env
 ```
 
-Alternatively, you can use pip:
+Alternatively, you can use pip with Python ≥ 3.12:
 ```
 pip install crocodeel
 ```
