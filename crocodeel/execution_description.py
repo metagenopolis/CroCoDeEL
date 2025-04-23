@@ -14,6 +14,8 @@ class ExecutionDescription:
         species_ab_table_fh: TextIO,
         species_ab_table_2_fh: Optional[TextIO],
         filtering_ab_thr_factor: Optional[float],
+        probability_cutoff: float,
+        rate_cutoff: float
     ) -> None:
         self.software_version = version("crocodeel")
         self.rf_model_version = RandomForestModel.get_version()
@@ -27,6 +29,8 @@ class ExecutionDescription:
             else None
         )
         self.filtering_ab_thr_factor = filtering_ab_thr_factor
+        self.probability_cutoff = probability_cutoff
+        self.rate_cutoff = rate_cutoff
 
     def __str__(self) -> str:
         exec_desc_str = (
@@ -46,6 +50,11 @@ class ExecutionDescription:
         exec_desc_str = (
             exec_desc_str
             + f" | filtering_ab_thr_factor: {self.filtering_ab_thr_factor}"
+        )
+
+        exec_desc_str += (
+            f" | probability_cutoff: {self.probability_cutoff}"
+            f" | rate_cutoff: {self.rate_cutoff}"
         )
 
         return exec_desc_str

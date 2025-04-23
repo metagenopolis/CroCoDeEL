@@ -12,7 +12,7 @@ from importlib.metadata import version
 from crocodeel.execution_description import ExecutionDescription
 from crocodeel import ab_table_utils
 from crocodeel.conta_event import ContaminationEventIO
-from crocodeel.search_conta import run_search_conta
+from crocodeel.search_conta import run_search_conta, Defaults as search_conta_defaults
 from crocodeel.plot_conta import run_plot_conta, Defaults as plot_conta_defaults
 from crocodeel.ressources import TestData
 
@@ -23,20 +23,32 @@ def set_logging() -> None:
     logging.basicConfig(format="%(asctime)s :: %(levelname)s :: %(message)s")
 
 
-def nproc(value) -> int:
+def nproc(value: str) -> int:
     max_nproc = multiprocessing.cpu_count()
 
     try:
-        value = int(value)
+        ivalue = int(value)
     except ValueError as value_err:
-        raise argparse.ArgumentTypeError("NPROC is not an integer") from value_err
+        raise argparse.ArgumentTypeError(f"{value} is not an integer") from value_err
 
-    if value <= 0:
-        raise argparse.ArgumentTypeError("minimum NPROC is 1")
-    if value > max_nproc:
-        raise argparse.ArgumentTypeError(f"maximum NPROC is {max_nproc}")
+    if ivalue <= 0:
+        raise argparse.ArgumentTypeError("minimum value is 1")
+    if ivalue > max_nproc:
+        raise argparse.ArgumentTypeError(f"maximum value is {max_nproc}")
 
-    return value
+    return ivalue
+
+
+def bounded_float_01(value: str) -> float:
+    try:
+        fvalue = float(value)
+    except ValueError as value_err:
+        raise argparse.ArgumentTypeError(f"{value} is not a valid float") from value_err
+
+    if not 0.0 <= fvalue <= 1.0:
+        raise argparse.ArgumentTypeError("value must be a float between 0 and 1")
+
+    return fvalue
 
 
 def get_arguments() -> argparse.Namespace:
@@ -112,11 +124,33 @@ def get_arguments() -> argparse.Namespace:
             if cur_parser == test_install_parser
             else "Filter out low-abundance species that may be inaccurately quantified. "
             "In each sample, set the abundance of species to zero if they are up to "
-            "%(metavar)s times more abundant than the least abundant species .  "
+            "%(metavar)s times more abundant than the least abundant species. "
             "Recommended value for MetaPhlAn4: 20 (default: None)",
         )
 
     for cur_parser in search_conta_parser, easy_wf_parser, test_install_parser:
+        cur_parser.add_argument(
+            "--probability-cutoff",
+            dest="probability_cutoff",
+            type=bounded_float_01,
+            default=search_conta_defaults.PROBABILITY_CUTOFF,
+            metavar="PROBABILITY_CUTOFF",
+            help=argparse.SUPPRESS
+            if cur_parser != search_conta_parser
+            else "Only report contamination events with a probability greater than "
+            "%(metavar)s (default: %(default).2f)",
+        )
+        cur_parser.add_argument(
+            "--rate-cutoff",
+            dest="rate_cutoff",
+            type=bounded_float_01,
+            default=search_conta_defaults.RATE_CUTOFF,
+            metavar="RATE_CUTOFF",
+            help=argparse.SUPPRESS
+            if cur_parser != search_conta_parser
+            else "Only report events with a contamination rate greater than "
+            "%(metavar)s (default: %(default).0f)",
+        )
         cur_parser.add_argument(
             "-c",
             dest="conta_events_fh",
@@ -136,6 +170,7 @@ def get_arguments() -> argparse.Namespace:
             if cur_parser == test_install_parser
             else "Output TSV file listing all contamination events",
         )
+
     plot_conta_parser.add_argument(
         "-c",
         dest="conta_events_fh",
@@ -242,6 +277,8 @@ def main() -> None:
             args.species_ab_table_fh,
             args.species_ab_table_fh_2,
             args.filtering_ab_thr_factor,
+            args.probability_cutoff,
+            args.rate_cutoff,
         )
         print(exec_desc, file=args.conta_events_fh)
 
@@ -269,7 +306,11 @@ def main() -> None:
     # Search and save contamination events
     if args.command in ("easy_wf", "search_conta", "test_install"):
         conta_events = run_search_conta(
-            species_ab_table, species_ab_table_2, args.nproc
+            species_ab_table,
+            species_ab_table_2,
+            args.probability_cutoff,
+            args.rate_cutoff,
+            args.nproc,
         )
         ContaminationEventIO.write_tsv(conta_events, args.conta_events_fh)
         args.conta_events_fh.close()

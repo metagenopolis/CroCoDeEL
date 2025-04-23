@@ -16,14 +16,20 @@ from crocodeel.common import (
 
 
 def run_search_conta(
-    species_ab_table: pd.DataFrame, species_ab_table_2: Optional[pd.DataFrame], nproc=int
+    species_ab_table: pd.DataFrame,
+    species_ab_table_2: Optional[pd.DataFrame],
+    probability_cutoff: float,
+    rate_cutoff: float,
+    nproc: int,
 ) -> list[ContaminationEvent]:
     if species_ab_table_2 is not None:
         all_samples = species_ab_table.columns
         all_samples_2 = species_ab_table_2.columns
         all_sample_pairs = product(all_samples, all_samples_2)
         num_sample_pairs = len(all_samples) * len(all_samples_2)
-        species_ab_table = species_ab_table.join(species_ab_table_2, how="outer").fillna(-np.inf)
+        species_ab_table = species_ab_table.join(
+            species_ab_table_2, how="outer"
+        ).fillna(-np.inf)
     else:
         all_samples = species_ab_table.columns
         all_sample_pairs = product(all_samples, all_samples)
@@ -33,12 +39,17 @@ def run_search_conta(
         species_ab_table,
         all_sample_pairs,
         num_sample_pairs,
-        nproc)
+        probability_cutoff,
+        rate_cutoff,
+        nproc,
+    )
 
     start = perf_counter()
     logging.info("Search for contaminations started")
     conta_events = contamination_searcher.search_contamination()
-    logging.info("Search completed in %.1f seconds", np.round(perf_counter() - start, 1))
+    logging.info(
+        "Search completed in %.1f seconds", np.round(perf_counter() - start, 1)
+    )
 
     contaminated_samples = {conta_event.target for conta_event in conta_events}
     logging.info("%d contamination events detected", len(conta_events))
@@ -49,10 +60,18 @@ def run_search_conta(
     return conta_events
 
 
-class ContaminationSearcherWorker:
+class Defaults:
     PROBABILITY_CUTOFF: Final[float] = 0.5
+    RATE_CUTOFF: Final[float] = 0.0
 
-    def __init__(self, species_ab_table: pd.DataFrame, rf_classifier):
+
+class ContaminationSearcherWorker:
+
+    def __init__(
+        self,
+        species_ab_table: pd.DataFrame,
+        rf_classifier,
+    ):
         self.species_ab_table = species_ab_table
         self.rf_classifier = rf_classifier
 
@@ -122,16 +141,23 @@ class ContaminationSearcherDriver:
         species_ab_table: pd.DataFrame,
         all_sample_pairs: Iterator[tuple[str, str]],
         num_sample_pairs: int,
-        nproc: int = 1,
+        probability_cutoff: float,
+        rate_cutoff: float,
+        nproc: int,
     ):
         self.species_ab_table = species_ab_table
         self.all_sample_pairs = all_sample_pairs
         self.num_sample_pairs = num_sample_pairs
+        self.probability_cutoff = probability_cutoff
+        self.rate_cutoff = rate_cutoff
         self.nproc = nproc
 
     def search_contamination(self) -> list[ContaminationEvent]:
         rf_classifier = RandomForestModel.load()
-        worker = ContaminationSearcherWorker(self.species_ab_table, rf_classifier)
+        worker = ContaminationSearcherWorker(
+            self.species_ab_table,
+            rf_classifier,
+        )
 
         all_conta_events = []
 
@@ -149,8 +175,11 @@ class ContaminationSearcherDriver:
             )
 
             for conta_event in pbar:
-                if conta_event.probability >= ContaminationSearcherWorker.PROBABILITY_CUTOFF:
+                if (
+                    conta_event.probability >= self.probability_cutoff
+                    and conta_event.rate >= self.rate_cutoff
+                ):
                     all_conta_events.append(conta_event)
-                    pbar.set_postfix_str(f'{len(all_conta_events)} conta events found')
+                    pbar.set_postfix_str(f"{len(all_conta_events)} conta events found")
 
         return all_conta_events
