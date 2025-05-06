@@ -14,6 +14,7 @@ from crocodeel import ab_table_utils
 from crocodeel.conta_event import ContaminationEventIO
 from crocodeel.search_conta import run_search_conta, Defaults as search_conta_defaults
 from crocodeel.plot_conta import run_plot_conta, Defaults as plot_conta_defaults
+from crocodeel.train_model import run_train_model, Defaults as train_model_defaults
 from crocodeel.ressources import TestData
 
 
@@ -53,9 +54,9 @@ def bounded_float_01(value: str) -> float:
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="crocodeel")
-    parser.add_argument(
-       "-v", "--version", action="version", version=f"%(prog)s version { version("crocodeel")}"
-    )
+    # parser.add_argument(
+    #  "-v", "--version", action="version", version=f"%(prog)s version { version("crocodeel")}"
+    # )
 
     subparsers = parser.add_subparsers(
         title="positional arguments",
@@ -81,12 +82,18 @@ def get_arguments() -> argparse.Namespace:
         help="Test if %(prog)s is correctly installed "
         "and generates expected results",
     )
+    train_model_parser = subparsers.add_parser(
+        "train_model",
+        help="Train the Random Forest model used by %(prog)s "
+        "to classify sample pairs",
+    )
 
     for cur_parser in (
         search_conta_parser,
         easy_wf_parser,
         plot_conta_parser,
         test_install_parser,
+        train_model_parser
     ):
         cur_parser.add_argument(
             "-s",
@@ -108,7 +115,7 @@ def get_arguments() -> argparse.Namespace:
             required=False,
             metavar="SPECIES_ABUNDANCE_TABLE_2",
             help=argparse.SUPPRESS
-            if cur_parser == test_install_parser
+            if cur_parser in (test_install_parser, train_model_parser)
             else "Optional input TSV file corresponding to another species abundance table. "
             "If provided, samples from this table will be considered as contamination targets "
             "while those from the first table as contamination sources.",
@@ -121,7 +128,7 @@ def get_arguments() -> argparse.Namespace:
             default=None,
             metavar="AB_THRESHOLD_FACTOR",
             help=argparse.SUPPRESS
-            if cur_parser == test_install_parser
+            if cur_parser in (test_install_parser, train_model_parser)
             else "Filter out low-abundance species that may be inaccurately quantified. "
             "In each sample, set the abundance of species to zero if they are up to "
             "%(metavar)s times more abundant than the least abundant species. "
@@ -201,7 +208,54 @@ def get_arguments() -> argparse.Namespace:
             else "Output PDF file with scatterplots for all contamination events",
         )
 
-    for cur_parser in search_conta_parser, easy_wf_parser, test_install_parser:
+    train_model_parser.add_argument(
+        "-m",
+        dest="model_fh",
+        type=argparse.FileType("wb"),
+        required=True,
+        metavar="MODEL_FILE",
+        help="Output file storing the trained Random Forest model",
+    )
+    train_model_parser.add_argument(
+        "-r",
+        dest="json_report_fh",
+        type=argparse.FileType("w"),
+        required=True,
+        metavar="JSON_REPORT_FILE",
+        help="Output JSON file storing classification performance metrics "
+        "for train and test splits",
+    )
+    train_model_parser.add_argument(
+        "--test-size",
+        dest="test_size",
+        type=bounded_float_01,
+        default=train_model_defaults.TEST_SIZE,
+        metavar="TEST_SIZE",
+        help="Proportion of dataset to include in test split (default: %(default).2f)",
+    )
+    train_model_parser.add_argument(
+        "--ntrees",
+        dest="ntrees",
+        type=int,
+        default=train_model_defaults.NTREES,
+        metavar="NTREES",
+        help="Number of trees in the RandomForest model (default: %(default)d)",
+    )
+    train_model_parser.add_argument(
+        "--rng-seed",
+        dest="rng_seed",
+        type=int,
+        default=train_model_defaults.RNG_SEED,
+        metavar="RNG_SEED",
+        help="Seed of the random number generator for reproducibility (default: %(default)d)",
+    )
+
+    for cur_parser in (
+        search_conta_parser,
+        easy_wf_parser,
+        test_install_parser,
+        train_model_parser,
+    ):
         cur_parser.add_argument(
             "--nproc",
             dest="nproc",
@@ -360,6 +414,16 @@ def main() -> None:
 
         logging.info("Tests completed successfully")
 
+    if args.command == "train_model":
+        run_train_model(
+            species_ab_table,
+            args.model_fh,
+            args.json_report_fh,
+            args.test_size,
+            args.ntrees,
+            args.rng_seed,
+            args.nproc,
+        )
 
 if __name__ == "__main__":
     main()
