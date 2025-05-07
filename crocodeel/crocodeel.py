@@ -53,10 +53,15 @@ def bounded_float_01(value: str) -> float:
 
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog="crocodeel")
-    # parser.add_argument(
-    #  "-v", "--version", action="version", version=f"%(prog)s version { version("crocodeel")}"
-    # )
+    prog_name = "CroCoDeEL"
+    prog_version = version(prog_name.lower())
+    parser = argparse.ArgumentParser(prog=prog_name)
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"{prog_name} version {prog_version}",
+    )
 
     subparsers = parser.add_subparsers(
         title="positional arguments",
@@ -79,12 +84,12 @@ def get_arguments() -> argparse.Namespace:
     )
     test_install_parser = subparsers.add_parser(
         "test_install",
-        help="Test if %(prog)s is correctly installed "
+        help=f"Test if {prog_name} is correctly installed "
         "and generates expected results",
     )
     train_model_parser = subparsers.add_parser(
         "train_model",
-        help="Train the Random Forest model used by %(prog)s "
+        help=f"Train the Random Forest model used by {prog_name} "
         "to classify sample pairs",
     )
 
