@@ -45,13 +45,25 @@ def run_search_conta(
     )
 
     start = perf_counter()
-    logging.info("Search for contaminations started")
+    logging.info(
+        "Searching contamination using %d process%s...",
+        nproc,
+        "" if nproc == 1 else "es",
+    )
     conta_events = contamination_searcher.search_contamination()
     logging.info("Search completed in %.1f seconds", perf_counter() - start)
 
     contaminated_samples = {conta_event.target for conta_event in conta_events}
-    logging.info("%d contamination events detected", len(conta_events))
-    logging.info("%d samples contaminated", len(contaminated_samples))
+    logging.info(
+        "%d contamination event%s detected",
+        len(conta_events),
+        "s" if len(conta_events) > 1 else "",
+    )
+    logging.info(
+        "%d sample%s contaminated",
+        len(contaminated_samples),
+        "s" if len(contaminated_samples) > 1 else "",
+    )
 
     conta_events.sort(key=lambda e: e.rate, reverse=True)
 

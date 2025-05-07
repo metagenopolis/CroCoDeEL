@@ -40,8 +40,9 @@ class ContaminationEventIO:
         ]
 
         logging.info(
-            "%d contamination events loaded from %s",
+            "%d contamination event%s loaded from %s",
             len(conta_events),
+            "s" if len(conta_events) > 1 else "",
             Path(fh.name).resolve(),
         )
 

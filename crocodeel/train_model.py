@@ -45,7 +45,11 @@ def run_train_model(
         species_ab_table, all_sample_pairs, num_sample_pairs, nproc
     )
     start = perf_counter()
-    logging.info("Computing features using %d processes...", nproc)
+    logging.info(
+        "Computing features using %d process%s...",
+        nproc,
+        "" if nproc == 1 else "es",
+    )
     all_features = features_computer.compute_all_features()
     logging.info(
         "Feature computation completed in %.1f seconds", perf_counter() - start
@@ -95,7 +99,10 @@ def run_train_model(
     )
     start = perf_counter()
     logging.info(
-        "Training Random Forest model with %d trees using %d processes...", ntrees, nproc
+        "Training Random Forest model with %d trees using %d process%s...",
+        ntrees,
+        nproc,
+        "" if nproc == 1 else "es",
     )
     rf_model.fit(features_train, is_contaminated_train)
     logging.info("Training completed in %.1f seconds", perf_counter() - start)
