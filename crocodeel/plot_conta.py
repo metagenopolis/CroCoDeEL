@@ -34,7 +34,7 @@ def run_plot_conta(
         no_conta_line,
         color_conta_species,
     ).save_to_pdf(pdf_report_fh)
-    logging.info("PDF report generated in %.1f seconds", np.round(perf_counter() - start, 1))
+    logging.info("PDF report generated in %.1f seconds", perf_counter() - start)
     logging.info("PDF report saved in %s", Path(pdf_report_fh.name).resolve())
     pdf_report_fh.close()
 

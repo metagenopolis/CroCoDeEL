@@ -47,9 +47,7 @@ def run_search_conta(
     start = perf_counter()
     logging.info("Search for contaminations started")
     conta_events = contamination_searcher.search_contamination()
-    logging.info(
-        "Search completed in %.1f seconds", np.round(perf_counter() - start, 1)
-    )
+    logging.info("Search completed in %.1f seconds", perf_counter() - start)
 
     contaminated_samples = {conta_event.target for conta_event in conta_events}
     logging.info("%d contamination events detected", len(conta_events))
