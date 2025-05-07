@@ -163,15 +163,6 @@ def get_arguments() -> argparse.Namespace:
             dest="conta_events_fh",
             type=argparse.FileType("w"),
             required=cur_parser != test_install_parser,
-            default=NamedTemporaryFile(
-                mode="w",
-                prefix="contamination_events_",
-                suffix=".tsv",
-                delete=False,
-                delete_on_close=False,
-            )
-            if cur_parser == test_install_parser
-            else None,
             metavar="CONTAMINATION_EVENTS_FILE",
             help=argparse.SUPPRESS
             if cur_parser == test_install_parser
@@ -193,15 +184,6 @@ def get_arguments() -> argparse.Namespace:
             dest="pdf_report_fh",
             type=argparse.FileType("wb"),
             required=cur_parser != test_install_parser,
-            default=NamedTemporaryFile(
-                mode="wb",
-                prefix="contamination_events_",
-                suffix=".pdf",
-                delete=False,
-                delete_on_close=False,
-            )
-            if cur_parser == test_install_parser
-            else None,
             metavar="PDF_REPORT_FILE",
             help=argparse.SUPPRESS
             if cur_parser == test_install_parser
@@ -322,8 +304,22 @@ def main() -> None:
     set_logging()
     args = get_arguments()
 
-    if args.command == 'test_install':
+    if args.command == "test_install":
         logging.info("Running tests on the toy dataset")
+        args.conta_events_fh = NamedTemporaryFile(
+            mode="w",
+            prefix="contamination_events_",
+            suffix=".tsv",
+            delete=False,
+            delete_on_close=False,
+        )
+        args.pdf_report_fh = NamedTemporaryFile(
+            mode="wb",
+            prefix="contamination_events_",
+            suffix=".pdf",
+            delete=False,
+            delete_on_close=False,
+        )
 
     # Add comment line in output file describing execution context
     if args.command in ("easy_wf", "search_conta"):
