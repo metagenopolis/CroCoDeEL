@@ -127,10 +127,11 @@ class ContaminationSearcherWorker:
         conta_line_features = compute_conta_line_features(
             conta_line_offset, candidate_species_inliers, cur_sample_pair_species_ab
         )
-        conta_line_features = np.array([conta_line_features])
 
         # Step 4: Apply the Random Forest model to confirm the contamination event
-        conta_probability = self.rf_classifier.predict_proba(conta_line_features)
+        conta_probability = self.rf_classifier.predict_proba(
+            conta_line_features.reshape(1, -1)
+        )
         conta_probability = conta_probability[0, 1]
 
         contamination_rate = np.round(10 ** (-conta_line_offset), 4)

@@ -165,17 +165,19 @@ def compute_conta_line_features(
             )
         )
 
-    return (
-        ratio_species_conta_line_to_shared_species,
-        ratio_species_above_line_to_shared_species,
-        num_species_conta_line,
-        num_species_above_conta_line,
-        spearman_corr_all_species,
-        mean_distance_to_the_contamination_line,
-        mean_distance_to_nearest_neighbors,
-        mean_distance_to_farthest_neighbors,
-        diff_mean_ab_top10_source_species_vs_ab_cutoff1,
-        diff_mean_ab_top10_source_species_vs_ab_cutoff2,
+    return np.array(
+        [
+            ratio_species_conta_line_to_shared_species,
+            ratio_species_above_line_to_shared_species,
+            num_species_conta_line,
+            num_species_above_conta_line,
+            spearman_corr_all_species,
+            mean_distance_to_the_contamination_line,
+            mean_distance_to_nearest_neighbors,
+            mean_distance_to_farthest_neighbors,
+            diff_mean_ab_top10_source_species_vs_ab_cutoff1,
+            diff_mean_ab_top10_source_species_vs_ab_cutoff2,
+        ]
     )
 
 

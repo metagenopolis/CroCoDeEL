@@ -166,7 +166,6 @@ class FeaturesComputerWorker:
         conta_line_features = compute_conta_line_features(
             conta_line_offset, candidate_species_inliers, cur_sample_pair_species_ab
         )
-        conta_line_features = np.array([conta_line_features])
 
         return sample_pair_id, conta_line_features
 
