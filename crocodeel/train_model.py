@@ -4,6 +4,8 @@ from pathlib import Path
 from time import perf_counter
 from typing import BinaryIO, TextIO, Final, Iterator
 import json
+import re
+import sys
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -27,12 +29,11 @@ def run_train_model(
     rng_seed: int,
     nproc: int,
 ):
-    all_samples = species_ab_table.columns
-    source_samples = [sample for sample in all_samples if "source" in sample]
-    target_samples = [sample.replace("source", "target") for sample in source_samples]
-    all_sample_pairs = zip(source_samples, target_samples)
-    num_sample_pairs = len(source_samples)
-    is_contaminated = np.char.startswith(source_samples, "conta")
+    sample_pairs = _reconstruct_sample_pairs(species_ab_table)
+    num_sample_pairs = len(sample_pairs)
+    is_contaminated = np.array(
+        [source_sample.startswith("conta") for source_sample, _ in sample_pairs]
+    )
 
     logging.info(
         "Abundance table contains %i sample pairs: %i contaminated and %i non-contaminated",
@@ -42,7 +43,7 @@ def run_train_model(
     )
 
     features_computer = FeaturesComputerDriver(
-        species_ab_table, all_sample_pairs, num_sample_pairs, nproc
+        species_ab_table, sample_pairs, num_sample_pairs, nproc
     )
     start = perf_counter()
     logging.info(
@@ -137,10 +138,69 @@ def run_train_model(
     )
     json_report_fh.close()
 
+
+def _reconstruct_sample_pairs(
+    species_ab_table: pd.DataFrame,
+) -> list[tuple[str, str]] :
+    all_samples = species_ab_table.columns
+
+    # Identify invalid sample names
+    sample_name_pattern = re.compile(r"^(conta_|non_conta_)(source_|target_)case_\d+$")
+    invalid_sample_names = [
+        name for name in all_samples if not sample_name_pattern.match(name)
+    ]
+    if invalid_sample_names:
+        logging.error(
+            "The following sample names do not match the expected pattern '%s': %s",
+            sample_name_pattern.pattern,
+            ", ".join(invalid_sample_names),
+        )
+        sys.exit(1)
+
+    # Identify source and target samples
+    source_samples = [sample for sample in all_samples if "source" in sample]
+    target_samples = [sample for sample in all_samples if "target" in sample]
+
+    # Check if each source has a corresponding target
+    source_without_target = [
+        source_sample
+        for source_sample in source_samples
+        if source_sample.replace("source", "target") not in target_samples
+    ]
+    if source_without_target:
+        logging.error(
+            "The following source samples do not have a corresponding target: %s",
+            ", ".join(source_without_target),
+        )
+    # Check if each target has a corresponding source
+    target_without_source = [
+        target_sample
+        for target_sample in target_samples
+        if target_sample.replace("target", "source") not in source_samples
+    ]
+    if target_without_source:
+        logging.error(
+            "The following target samples do not have a corresponding source: %s",
+            ", ".join(target_without_source),
+        )
+    if source_without_target or target_without_source:
+        sys.exit(1)
+
+    # Everything is OK
+    # We can reconstruct sample pairs
+    sample_pairs = [
+        (source_sample, source_sample.replace("source", "target"))
+        for source_sample in source_samples
+    ]
+
+    return sample_pairs
+
+
 class Defaults:
     TEST_SIZE: Final[float] = 0.3
     NTREES: Final[int] = 1000
     RNG_SEED: Final[int] = 0
+
 
 class FeaturesComputerWorker:
 
@@ -176,12 +236,12 @@ class FeaturesComputerDriver:
     def __init__(
         self,
         species_ab_table: pd.DataFrame,
-        all_sample_pairs: Iterator[tuple[str, str]],
+        sample_pairs: Iterator[tuple[str, str]],
         num_sample_pairs: int,
         nproc: int = 1,
     ):
         self.species_ab_table = species_ab_table
-        self.all_sample_pairs = list(enumerate(all_sample_pairs))
+        self.sample_pairs = list(enumerate(sample_pairs))
         self.num_sample_pairs = num_sample_pairs
         self.nproc = nproc
 
@@ -194,7 +254,7 @@ class FeaturesComputerDriver:
         with Pool(processes=self.nproc) as pool:
             all_tasks = pool.imap_unordered(
                 worker.compute_features_sample_pair,
-                self.all_sample_pairs,
+                self.sample_pairs,
                 chunksize=self.DEFAULT_CHUNKSIZE,
             )
             pbar = tqdm(
