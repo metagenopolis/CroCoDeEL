@@ -81,7 +81,7 @@ class ContaminationSearcherWorker:
         self,
         species_ab_table: pd.DataFrame,
         rf_classifier,
-    ):
+    ) -> None:
         self.species_ab_table = species_ab_table
         self.rf_classifier = rf_classifier
 
@@ -155,7 +155,7 @@ class ContaminationSearcherDriver:
         probability_cutoff: float,
         rate_cutoff: float,
         nproc: int,
-    ):
+    ) -> None:
         self.species_ab_table = species_ab_table
         self.all_sample_pairs = all_sample_pairs
         self.num_sample_pairs = num_sample_pairs

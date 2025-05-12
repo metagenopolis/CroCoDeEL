@@ -20,7 +20,7 @@ def run_plot_conta(
     ncol: int,
     no_conta_line: bool,
     color_conta_species: bool
-):
+) -> None:
     if species_ab_table_2 is not None:
         species_ab_table = species_ab_table.join(species_ab_table_2, how="outer").fillna(0.0)
 
@@ -58,7 +58,7 @@ class ContaminationPlotsReport:
         ncol: int,
         no_conta_line: bool,
         color_conta_species: bool,
-    ):
+    ) -> None:
         self.species_ab_table = species_ab_table
         self.conta_events = conta_events
         self.nrow = nrow
@@ -67,7 +67,9 @@ class ContaminationPlotsReport:
         self.color_conta_species = color_conta_species
 
         # Add pseudo_zero
-        min_non_zero = self.species_ab_table[self.species_ab_table > -np.inf].min().min()
+        min_non_zero = (
+            self.species_ab_table[self.species_ab_table > -np.inf].min().min()
+        )
         self.pseudo_zero = int(np.floor(min_non_zero))
         self.species_ab_table.replace(-np.inf, self.pseudo_zero, inplace=True)
 
