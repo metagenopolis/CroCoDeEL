@@ -2,7 +2,7 @@ from multiprocessing import Pool
 import logging
 from pathlib import Path
 from time import perf_counter
-from typing import BinaryIO, TextIO, Final, Iterator
+from typing import BinaryIO, TextIO, Final, Optional
 import json
 import re
 import sys
@@ -28,22 +28,21 @@ def run_train_model(
     ntrees: int,
     rng_seed: int,
     nproc: int,
-):
+) -> None:
     sample_pairs = _reconstruct_sample_pairs(species_ab_table)
-    num_sample_pairs = len(sample_pairs)
     is_contaminated = np.array(
         [source_sample.startswith("conta") for source_sample, _ in sample_pairs]
     )
 
     logging.info(
         "Abundance table contains %i sample pairs: %i contaminated and %i non-contaminated",
-        len(is_contaminated),
+        len(sample_pairs),
         sum(is_contaminated),
         sum(~is_contaminated),
     )
 
     features_computer = FeaturesComputerDriver(
-        species_ab_table, sample_pairs, num_sample_pairs, nproc
+        species_ab_table, sample_pairs, nproc
     )
     start = perf_counter()
     logging.info(
@@ -162,28 +161,28 @@ def _reconstruct_sample_pairs(
     target_samples = [sample for sample in all_samples if "target" in sample]
 
     # Check if each source has a corresponding target
-    source_without_target = [
+    sources_without_targets = [
         source_sample
         for source_sample in source_samples
         if source_sample.replace("source", "target") not in target_samples
     ]
-    if source_without_target:
+    if sources_without_targets:
         logging.error(
-            "The following source samples do not have a corresponding target: %s",
-            ", ".join(source_without_target),
+            "The following source samples have no corresponding targets: %s",
+            ", ".join(sources_without_targets),
         )
     # Check if each target has a corresponding source
-    target_without_source = [
+    targets_without_sources = [
         target_sample
         for target_sample in target_samples
         if target_sample.replace("target", "source") not in source_samples
     ]
-    if target_without_source:
+    if targets_without_sources:
         logging.error(
-            "The following target samples do not have a corresponding source: %s",
-            ", ".join(target_without_source),
+            "The following target samples have no corresponding sources: %s",
+            ", ".join(targets_without_sources),
         )
-    if source_without_target or target_without_source:
+    if sources_without_targets or targets_without_sources:
         sys.exit(1)
 
     # Everything is OK
@@ -204,18 +203,20 @@ class Defaults:
 
 class FeaturesComputerWorker:
 
-    def __init__(self, species_ab_table: pd.DataFrame):
+    def __init__(self, species_ab_table: pd.DataFrame) -> None:
         self.species_ab_table = species_ab_table
 
-    def compute_features_sample_pair(self, sample_pair: tuple[int, tuple[str, str]]):
-        sample_pair_id, (source, target) = sample_pair
+    def compute_features_sample_pair(
+        self, sample_pair: tuple[str, str]
+    ) -> Optional[np.ndarray]:
+        source, target = sample_pair
         # Search a potential contamination line
         (cur_sample_pair_species_ab, candidate_species_conta_line, _) = (
             select_candidate_species_conta_line(self.species_ab_table, source, target)
         )
 
         if candidate_species_conta_line.shape[0] <= 5:
-            return sample_pair_id, None
+            return None
 
         candidate_species_inliers, conta_line_offset = search_potential_conta_line(
             candidate_species_conta_line
@@ -227,7 +228,7 @@ class FeaturesComputerWorker:
             conta_line_offset, candidate_species_inliers, cur_sample_pair_species_ab
         )
 
-        return sample_pair_id, conta_line_features
+        return conta_line_features
 
 
 class FeaturesComputerDriver:
@@ -236,23 +237,22 @@ class FeaturesComputerDriver:
     def __init__(
         self,
         species_ab_table: pd.DataFrame,
-        sample_pairs: Iterator[tuple[str, str]],
-        num_sample_pairs: int,
+        sample_pairs: list[tuple[str, str]],
         nproc: int = 1,
-    ):
+    ) -> None:
         self.species_ab_table = species_ab_table
-        self.sample_pairs = list(enumerate(sample_pairs))
-        self.num_sample_pairs = num_sample_pairs
+        self.sample_pairs = sample_pairs
+        self.num_sample_pairs = len(sample_pairs)
         self.nproc = nproc
 
-    def compute_all_features(self):
+    def compute_all_features(self) -> np.ndarray:
         worker = FeaturesComputerWorker(self.species_ab_table)
 
         # TODO: replace hardcoded number of features by a constant
         all_features = np.empty((self.num_sample_pairs, 10))
 
         with Pool(processes=self.nproc) as pool:
-            all_tasks = pool.imap_unordered(
+            all_tasks = pool.imap(
                 worker.compute_features_sample_pair,
                 self.sample_pairs,
                 chunksize=self.DEFAULT_CHUNKSIZE,
@@ -264,7 +264,7 @@ class FeaturesComputerDriver:
                 bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} sample pairs processed",
             )
 
-            for cur_sample_pair_id, cur_sample_pair_features in pbar:
+            for cur_sample_pair_id, cur_sample_pair_features in enumerate(pbar):
                 all_features[cur_sample_pair_id] = cur_sample_pair_features
 
         return all_features
