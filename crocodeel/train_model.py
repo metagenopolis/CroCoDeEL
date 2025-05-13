@@ -108,7 +108,7 @@ def run_train_model(
     logging.info("Training completed in %.1f seconds", perf_counter() - start)
 
     # Save the model
-    joblib.dump(rf_model, model_fh)
+    joblib.dump(rf_model, model_fh, compress=3)
     logging.info("Model saved to %s", Path(model_fh.name).resolve())
     model_fh.close()
 
