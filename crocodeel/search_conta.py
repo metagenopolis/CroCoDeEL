@@ -2,12 +2,17 @@ from multiprocessing import Pool
 from itertools import product
 import logging
 from time import perf_counter
-from typing import Optional, Final, Iterator
+from typing import BinaryIO, Optional, Final, Iterator
+from pathlib import Path
+import importlib.resources
+import warnings
+import joblib
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from sklearn.exceptions import InconsistentVersionWarning
+from sklearn.ensemble import RandomForestClassifier
 from crocodeel.conta_event import ContaminationEvent
-from crocodeel.ressources import RandomForestModel
 from crocodeel.common import (
     select_candidate_species_conta_line,
     search_potential_conta_line,
@@ -18,10 +23,16 @@ from crocodeel.common import (
 def run_search_conta(
     species_ab_table: pd.DataFrame,
     species_ab_table_2: Optional[pd.DataFrame],
+    rf_model_fh: BinaryIO,
     probability_cutoff: float,
     rate_cutoff: float,
     nproc: int,
 ) -> list[ContaminationEvent]:
+    with warnings.catch_warnings():
+        warnings.filterwarnings(action="ignore", category=InconsistentVersionWarning)
+        rf_model = joblib.load(rf_model_fh)
+        rf_model.set_params(n_jobs=1)
+
     if species_ab_table_2 is not None:
         all_samples = species_ab_table.columns
         all_samples_2 = species_ab_table_2.columns
@@ -39,6 +50,7 @@ def run_search_conta(
         species_ab_table,
         all_sample_pairs,
         num_sample_pairs,
+        rf_model,
         probability_cutoff,
         rate_cutoff,
         nproc,
@@ -71,6 +83,9 @@ def run_search_conta(
 
 
 class Defaults:
+    MODEL_FILE: Final[Path] = importlib.resources.files().joinpath(
+        "models", "crocodeel_rf_Mar2023.joblib"
+    )
     PROBABILITY_CUTOFF: Final[float] = 0.5
     RATE_CUTOFF: Final[float] = 0.0
 
@@ -80,7 +95,7 @@ class ContaminationSearcherWorker:
     def __init__(
         self,
         species_ab_table: pd.DataFrame,
-        rf_classifier,
+        rf_classifier: RandomForestClassifier,
     ) -> None:
         self.species_ab_table = species_ab_table
         self.rf_classifier = rf_classifier
@@ -152,6 +167,7 @@ class ContaminationSearcherDriver:
         species_ab_table: pd.DataFrame,
         all_sample_pairs: Iterator[tuple[str, str]],
         num_sample_pairs: int,
+        rf_model: RandomForestClassifier,
         probability_cutoff: float,
         rate_cutoff: float,
         nproc: int,
@@ -159,15 +175,15 @@ class ContaminationSearcherDriver:
         self.species_ab_table = species_ab_table
         self.all_sample_pairs = all_sample_pairs
         self.num_sample_pairs = num_sample_pairs
+        self.rf_model = rf_model
         self.probability_cutoff = probability_cutoff
         self.rate_cutoff = rate_cutoff
         self.nproc = nproc
 
     def search_contamination(self) -> list[ContaminationEvent]:
-        rf_classifier = RandomForestModel.load()
         worker = ContaminationSearcherWorker(
             self.species_ab_table,
-            rf_classifier,
+            self.rf_model,
         )
 
         all_conta_events = []

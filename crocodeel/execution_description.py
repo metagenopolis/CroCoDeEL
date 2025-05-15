@@ -3,8 +3,7 @@ from getpass import getuser
 from datetime import datetime
 from importlib.metadata import version
 from pathlib import Path
-from typing import Optional, TextIO
-from crocodeel.ressources import RandomForestModel
+from typing import Optional, TextIO, BinaryIO
 
 
 class ExecutionDescription:
@@ -13,12 +12,13 @@ class ExecutionDescription:
         self,
         species_ab_table_fh: TextIO,
         species_ab_table_2_fh: Optional[TextIO],
+        rf_model_fh: BinaryIO,
         filtering_ab_thr_factor: Optional[float],
         probability_cutoff: float,
         rate_cutoff: float
     ) -> None:
         self.software_version = version("crocodeel")
-        self.rf_model_version = RandomForestModel.get_version()
+        self.rf_model_filepath = Path(rf_model_fh.name).resolve()
         self.hostname = gethostname()
         self.username = getuser()
         self.datetime = datetime.now().replace(microsecond=0).isoformat()
@@ -35,7 +35,7 @@ class ExecutionDescription:
     def __str__(self) -> str:
         exec_desc_str = (
             f"# crocodeel version: {self.software_version}"
-            f" | rf_model_version: {self.rf_model_version}"
+            f" | rf_model: {self.rf_model_filepath}"
             f" | hostname: {self.hostname}"
             f" | username: {self.username}"
             f" | datetime: {self.datetime}"

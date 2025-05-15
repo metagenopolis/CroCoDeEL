@@ -15,7 +15,7 @@ from crocodeel.conta_event import ContaminationEventIO
 from crocodeel.search_conta import run_search_conta, Defaults as search_conta_defaults
 from crocodeel.plot_conta import run_plot_conta, Defaults as plot_conta_defaults
 from crocodeel.train_model import run_train_model, Defaults as train_model_defaults
-from crocodeel.ressources import TestData
+from crocodeel.test_install import TestData
 
 
 def set_logging() -> None:
@@ -141,6 +141,18 @@ def get_arguments() -> argparse.Namespace:
         )
 
     for cur_parser in search_conta_parser, easy_wf_parser, test_install_parser:
+        cur_parser.add_argument(
+            "-m",
+            dest="rf_model_fh",
+            type=argparse.FileType("rb"),
+            required=False,
+            default=search_conta_defaults.MODEL_FILE,
+            metavar="RF_MODEL_FILE",
+            help=argparse.SUPPRESS
+            if cur_parser != search_conta_parser
+            else "Joblib file containing the pre-trained Random Forest model "
+            "used to detect contamination events (default: %(default)s)",
+        )
         cur_parser.add_argument(
             "--probability-cutoff",
             dest="probability_cutoff",
@@ -331,6 +343,7 @@ def main() -> None:
         exec_desc = ExecutionDescription(
             args.species_ab_table_fh,
             args.species_ab_table_fh_2,
+            args.rf_model_fh,
             args.filtering_ab_thr_factor,
             args.probability_cutoff,
             args.rate_cutoff,
@@ -363,6 +376,7 @@ def main() -> None:
         conta_events = run_search_conta(
             species_ab_table,
             species_ab_table_2,
+            args.rf_model_fh,
             args.probability_cutoff,
             args.rate_cutoff,
             args.nproc,
