@@ -31,7 +31,6 @@ def run_search_conta(
     with warnings.catch_warnings():
         warnings.filterwarnings(action="ignore", category=InconsistentVersionWarning)
         rf_model = joblib.load(rf_model_fh)
-        rf_model.set_params(n_jobs=1)
 
     if species_ab_table_2 is not None:
         all_samples = species_ab_table.columns
