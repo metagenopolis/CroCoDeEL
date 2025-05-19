@@ -6,8 +6,6 @@ import argparse
 import logging
 import multiprocessing
 from pathlib import Path
-import filecmp
-from tempfile import NamedTemporaryFile
 from importlib.metadata import version
 from crocodeel.execution_description import ExecutionDescription
 from crocodeel import ab_table_utils
@@ -15,8 +13,7 @@ from crocodeel.conta_event import ContaminationEventIO
 from crocodeel.search_conta import run_search_conta, Defaults as search_conta_defaults
 from crocodeel.plot_conta import run_plot_conta, Defaults as plot_conta_defaults
 from crocodeel.train_model import run_train_model, Defaults as train_model_defaults
-from crocodeel.test_install import TestData
-
+from crocodeel.test_install import TestInstall
 
 def set_logging() -> None:
     logger = logging.getLogger()
@@ -105,9 +102,6 @@ def get_arguments() -> argparse.Namespace:
             dest="species_ab_table_fh",
             type=argparse.FileType("r"),
             required=cur_parser != test_install_parser,
-            default=str(TestData.SPECIES_ABUNDANCE_TABLE)
-            if cur_parser == test_install_parser
-            else None,
             metavar="SPECIES_ABUNDANCE_TABLE",
             help=argparse.SUPPRESS
             if cur_parser == test_install_parser
@@ -323,20 +317,10 @@ def main() -> None:
 
     if args.command == "test_install":
         logging.info("Running tests on the toy dataset")
-        args.conta_events_fh = NamedTemporaryFile(
-            mode="w",
-            prefix="contamination_events_",
-            suffix=".tsv",
-            delete=False,
-            delete_on_close=False,
-        )
-        args.pdf_report_fh = NamedTemporaryFile(
-            mode="wb",
-            prefix="contamination_events_",
-            suffix=".pdf",
-            delete=False,
-            delete_on_close=False,
-        )
+        test_install = TestInstall(args.keep_results)
+        args.species_ab_table_fh = test_install.species_ab_table_fh
+        args.conta_events_fh = test_install.conta_events_fh
+        args.pdf_report_fh = test_install.pdf_report_fh
 
     # Add comment line in output file describing execution context
     if args.command in ("easy_wf", "search_conta"):
@@ -401,6 +385,7 @@ def main() -> None:
             args.no_conta_line,
             args.color_conta_species,
         )
+        args.pdf_report_fh.close()
 
     if args.command in ("easy_wf", "search_conta") and conta_events:
         logging.warning("Contamination events may be false positives, especially "
@@ -414,20 +399,7 @@ def main() -> None:
                 "scatterplots in the PDF report %s", Path(args.pdf_report_fh.name).resolve())
 
     if args.command == "test_install":
-        if filecmp.cmp(TestData.EXPECTED_CONTA_EVENTS_FILE, args.conta_events_fh.name):
-            logging.info(
-                "All contamination events with expected rates and probabilities found"
-            )
-        else:
-            logging.error("Contamination events found are not those expected")
-            sys.exit(1)
-
-        if not args.keep_results:
-            Path(args.pdf_report_fh.name).unlink()
-            Path(args.conta_events_fh.name).unlink()
-            logging.info("Temporary result files deleted")
-
-        logging.info("Tests completed successfully")
+        test_install.check_results()
 
     if args.command == "train_model":
         run_train_model(
