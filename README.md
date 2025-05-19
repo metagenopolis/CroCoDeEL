@@ -112,7 +112,7 @@ and then run CroCoDeEL:
 crocodeel easy_wf -s PRJNA698986_P3.meteor.tab -c PRJNA698986_P3.meteor.crocodeel.tsv -r PRJNA698986_P3.meteor.crocodeel.pdf
 ```
 
-### Train a new Random Forest
+### Train a new Random Forest model
 Advanced users can train a custom Random Forest model, which classifies sample pairs as contaminated or not.  
 You will need a species abundance table with labeled **contaminated** and **non-contaminated** sample pairs, to be used for training and testing.  
 To get started, you can download and decompress the dataset we used to train CroCoDeEL's default model:  
