@@ -52,7 +52,10 @@ def bounded_float_01(value: str) -> float:
 def get_arguments() -> argparse.Namespace:
     prog_name = "CroCoDeEL"
     prog_version = version(prog_name.lower())
-    parser = argparse.ArgumentParser(prog=prog_name)
+    parser = argparse.ArgumentParser(
+        description=f"{prog_name} is a tool that detects cross-sample contamination "
+        "in shotgun metagenomic data",
+    )
     parser.add_argument(
         "-v",
         "--version",
@@ -61,18 +64,17 @@ def get_arguments() -> argparse.Namespace:
     )
 
     subparsers = parser.add_subparsers(
-        title="positional arguments",
-        help="Select command",
+        title=f"{prog_name} subcommands",
         dest="command",
         required=True,
     )
     easy_wf_parser = subparsers.add_parser(
         "easy_wf",
-        help="Search cross-sample contamination and "
-        "create a PDF report in one command",
+        help="Run search_conta and plot_conta in one command "
+        "to detect cross-sample contamination and generate a PDF report",
     )
     search_conta_parser = subparsers.add_parser(
-        "search_conta", help="Search cross-sample contamination"
+        "search_conta", help="Search for cross-sample contamination"
     )
     plot_conta_parser = subparsers.add_parser(
         "plot_conta",
@@ -82,12 +84,12 @@ def get_arguments() -> argparse.Namespace:
     test_install_parser = subparsers.add_parser(
         "test_install",
         help=f"Test if {prog_name} is correctly installed "
-        "and generates expected results",
+        "and generates the expected results",
     )
     train_model_parser = subparsers.add_parser(
         "train_model",
         help=f"Train the Random Forest model used by {prog_name} "
-        "to classify sample pairs",
+        "to classify sample pairs (for advanced users)",
     )
 
     for cur_parser in (
