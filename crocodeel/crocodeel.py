@@ -318,7 +318,6 @@ def main() -> None:
     args = get_arguments()
 
     if args.command == "test_install":
-        logging.info("Running tests on the toy dataset")
         test_install = TestInstall(args.keep_results)
         args.species_ab_table_fh = test_install.species_ab_table_fh
         args.conta_events_fh = test_install.conta_events_fh
