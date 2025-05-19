@@ -112,6 +112,23 @@ and then run CroCoDeEL:
 crocodeel easy_wf -s PRJNA698986_P3.meteor.tab -c PRJNA698986_P3.meteor.crocodeel.tsv -r PRJNA698986_P3.meteor.crocodeel.pdf
 ```
 
+### Train a new Random Forest
+Advanced users can train a custom Random Forest model, which classifies sample pairs as contaminated or not.  
+You will need a species abundance table with labeled **contaminated** and **non-contaminated** sample pairs, to be used for training and testing.  
+To get started, you can download and decompress the dataset we used to train CroCoDeEL's default model:  
+```
+wget --content-disposition 'https://entrepot.recherche.data.gouv.fr/api/access/datafile/:persistentId?persistentId=doi:10.57745/QTK0HX'
+xz -d training_dataset.meteor.tsv.xz
+```
+Then, use the following command to train a new model:  
+```
+crocodeel train_model -s training_dataset.meteor.tsv -m crocodeel_model.tsv -r crocodeel_model_perf.tsv
+```
+Finally, to use your trained model instead of the default one, pass it with the _-m_ option:  
+```
+crocodeel search_conta -s species_ab.tsv -m crocodeel_model.tsv -c conta_events.tsv
+```
+
 ## Citation
 If you find CroCoDeEL useful, please cite:\
 Goulet, L. et al. "CroCoDeEL: accurate control-free detection of cross-sample contamination in metagenomic data" *bioRxiv* (2025). [https://doi.org/10.1101/2025.01.15.633153](https://doi.org/10.1101/2025.01.15.633153).
