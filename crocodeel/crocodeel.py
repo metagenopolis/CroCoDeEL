@@ -15,10 +15,11 @@ from crocodeel.plot_conta import run_plot_conta, Defaults as plot_conta_defaults
 from crocodeel.train_model import run_train_model, Defaults as train_model_defaults
 from crocodeel.test_install import TestInstall
 
+
 def set_logging() -> None:
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    logging.basicConfig(format="%(asctime)s :: %(levelname)s :: %(message)s")
+    logging.basicConfig(
+        format="%(asctime)s :: %(levelname)s :: %(message)s", level=logging.INFO
+    )
 
 
 def nproc(value: str) -> int:
