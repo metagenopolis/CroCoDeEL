@@ -18,6 +18,8 @@ from crocodeel.common import (
     search_potential_conta_line,
     compute_conta_line_features
 )
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.metrics import make_scorer, precision_score, recall_score, f1_score, accuracy_score
 
 
 def run_train_model(
@@ -81,62 +83,29 @@ def run_train_model(
         sum(~is_contaminated),
     )
 
-    # Create train and test splits
-    features_train, features_test, is_contaminated_train, is_contaminated_test = (
-        train_test_split(
-            all_features, is_contaminated, test_size=test_size, random_state=rng_seed
-        )
-    )
-    logging.info(
-        "Dataset split: %.0f%% for training, %.0f%% for testing",
-        100 * (1 - test_size),
-        100 * test_size,
-    )
-
-    # Train the model
+    # Cross-validation setup
     rf_model = RandomForestClassifier(
         n_estimators=ntrees, n_jobs=nproc, random_state=rng_seed
     )
-    start = perf_counter()
-    logging.info(
-        "Training Random Forest model with %d trees using %d process%s...",
-        ntrees,
-        nproc,
-        "" if nproc == 1 else "es",
-    )
-    rf_model.fit(features_train, is_contaminated_train)
-    logging.info("Training completed in %.1f seconds", perf_counter() - start)
+    cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=rng_seed)
 
-    # Save the model
-    rf_model.set_params(n_jobs=1)
-    joblib.dump(rf_model, model_fh, compress=3)
-    logging.info("Model saved to %s", Path(model_fh.name).resolve())
-    model_fh.close()
+    logging.info("Performing 10-fold cross-validation...")
 
-    # Create and save the performance report
-    pred_is_contaminated_train = rf_model.predict(features_train)
-    pred_is_contaminated_test = rf_model.predict(features_test)
-    performance_report = {
-        "train": {
-            "classification_report": classification_report(
-                is_contaminated_train,
-                pred_is_contaminated_train,
-                output_dict=True,
-            )
-        },
-        "test": {
-            "classification_report": classification_report(
-                is_contaminated_test,
-                pred_is_contaminated_test,
-                output_dict=True,
-            )
-        }
-    }
-    json.dump(performance_report, json_report_fh, indent=4)
-    logging.info(
-        "Model performance report saved to %s", Path(json_report_fh.name).resolve()
-    )
-    json_report_fh.close()
+    # Evaluate with multiple metrics
+    precision_scores = cross_val_score(rf_model, all_features, is_contaminated, cv=cv,
+                                       scoring=make_scorer(precision_score))
+    recall_scores = cross_val_score(rf_model, all_features, is_contaminated, cv=cv,
+                                    scoring=make_scorer(recall_score))
+    f1_scores = cross_val_score(rf_model, all_features, is_contaminated, cv=cv,
+                                scoring=make_scorer(f1_score))
+    accuracy_scores = cross_val_score(rf_model, all_features, is_contaminated, cv=cv,
+                                scoring=make_scorer(accuracy_score))
+
+    logging.info("10-fold CV results:")
+    logging.info("  Precision: %.3f ± %.3f", np.mean(precision_scores), np.std(precision_scores))
+    logging.info("  Recall:    %.3f ± %.3f", np.mean(recall_scores), np.std(recall_scores))
+    logging.info("  F1-score:  %.3f ± %.3f", np.mean(f1_scores), np.std(f1_scores))
+    logging.info("  Accuracy:  %.3f ± %.3f", np.mean(accuracy_scores), np.std(accuracy_scores))
 
 
 def _reconstruct_sample_pairs(
