@@ -367,6 +367,7 @@ def main() -> None:
             args.rate_cutoff,
             args.nproc,
         )
+        args.rf_model_fh.close()
         ContaminationEventIO.write_tsv(conta_events, args.conta_events_fh)
         args.conta_events_fh.close()
 
