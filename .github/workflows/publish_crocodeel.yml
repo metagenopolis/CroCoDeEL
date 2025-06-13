@@ -14,9 +14,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install poetry
-        uses: abatilo/actions-poetry@v2
+        uses: abatilo/actions-poetry@v4
       - name: Build and publish to PyPI
         run: |
           poetry config http-basic.pypi __token__ ${{ secrets.PYPI_TOKEN }}
-          poetry build -C crocodeel
-          poetry publish --skip-existing -C crocodeel
+          poetry build
+          poetry publish --skip-existing
