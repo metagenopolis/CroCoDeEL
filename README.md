@@ -117,7 +117,7 @@ Advanced users can train a custom Random Forest model, which classifies sample p
 You will need a species abundance table with labeled **contaminated** and **non-contaminated** sample pairs, to be used for training and testing.  
 To get started, you can download and decompress the dataset we used to train CroCoDeEL's default model:  
 ```
-wget --content-disposition 'https://entrepot.recherche.data.gouv.fr/api/access/datafile/:persistentId?persistentId=doi:10.57745/QTK0HX'
+wget --content-disposition 'https://entrepot.recherche.data.gouv.fr/api/access/datafile/:persistentId?persistentId=doi:10.57745/IBIPVG'
 xz -d training_dataset.meteor.tsv.xz
 ```
 Then, use the following command to train a new model:  
