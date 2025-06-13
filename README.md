@@ -2,7 +2,7 @@
 
 [![install with conda](https://img.shields.io/conda/vn/bioconda/crocodeel?color=green&label=bioconda%2Fcrocodeel&logo=anaconda)](https://anaconda.org/bioconda/crocodeel)
 [![PyPI](https://img.shields.io/pypi/v/crocodeel?label=pypi%20package)](https://pypi.org/project/crocodeel/)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14708155.svg)](https://doi.org/10.5281/zenodo.14708155)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14708154.svg)](https://doi.org/10.5281/zenodo.14708154)
 
 ## Introduction
 
