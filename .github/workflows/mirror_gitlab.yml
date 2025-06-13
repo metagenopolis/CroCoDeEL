@@ -15,5 +15,5 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.GITLAB_SSH_PRIVATE_KEY }}
         with:
           source-repo: "git@github.com:metagenopolis/CroCoDeEL.git"
-          destination-repo: "git@forgemia.inra.fr:metagenopolis/crocodeel.git"
+          destination-repo: "git@forge.inrae.fr:metagenopolis/crocodeel.git"
 
