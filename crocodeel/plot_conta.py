@@ -68,12 +68,12 @@ class ContaminationPlotsReport:
         self.no_conta_line = no_conta_line
         self.color_conta_species = color_conta_species
 
-        # Add pseudo_zero
-        min_non_zero = (
-            self.species_ab_table[self.species_ab_table > -np.inf].min().min()
-        )
-        self.pseudo_zero = int(np.floor(min_non_zero))
-        self.species_ab_table.replace(-np.inf, self.pseudo_zero, inplace=True)
+        if species_ab_table.shape[1] > 0:
+            min_non_zero = (
+                self.species_ab_table[self.species_ab_table > -np.inf].min().min()
+            )
+            self.pseudo_zero = int(np.floor(min_non_zero))
+            self.species_ab_table.replace(-np.inf, self.pseudo_zero, inplace=True)
 
     def _create_plot(self, conta_event: ContaminationEvent, ax: Axes) -> None:
         spearman_rho = self.species_ab_table[conta_event.target].corr(
