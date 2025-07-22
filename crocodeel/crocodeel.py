@@ -6,6 +6,7 @@ import argparse
 import logging
 import multiprocessing
 from pathlib import Path
+import os
 from importlib.metadata import version
 from crocodeel.execution_description import ExecutionDescription
 from crocodeel import ab_table_utils
@@ -21,6 +22,38 @@ def set_logging() -> None:
         format="%(asctime)s :: %(levelname)s :: %(message)s", level=logging.INFO
     )
 
+def readable_file(fp_str: str) -> Path:
+    fp = Path(fp_str).resolve()
+
+    if not fp.exists():
+        raise argparse.ArgumentTypeError(f"{fp} does not exist")
+    if not fp.is_file():
+        raise argparse.ArgumentTypeError(f"{fp} is not a regular file.")
+    if not os.access(fp, os.R_OK):
+        raise argparse.ArgumentTypeError(f"{fp} is not readable.")
+
+    return fp
+
+
+def writable_file(fp_str: str) -> Path:
+    fp = Path(fp_str).resolve()
+
+    if fp.exists():
+        if fp.is_dir():
+            raise argparse.ArgumentTypeError(f"{fp} is a directory, not a file.")
+        if not os.access(fp, os.W_OK):
+            raise argparse.ArgumentTypeError(f"{fp} is not writable.")
+        return fp
+
+    parent_dir = fp.parent or Path(".")
+    if not parent_dir.exists():
+        raise argparse.ArgumentTypeError(f"directory {parent_dir} does not exist.")
+    if not parent_dir.is_dir():
+        raise argparse.ArgumentTypeError(f"{parent_dir} is not a directory.")
+    if not os.access(parent_dir, os.W_OK):
+        raise argparse.ArgumentTypeError(f"directory {parent_dir} is not writable.")
+
+    return fp
 
 def nproc(value: str) -> int:
     max_nproc = multiprocessing.cpu_count()
@@ -102,8 +135,8 @@ def get_arguments() -> argparse.Namespace:
     ):
         cur_parser.add_argument(
             "-s",
-            dest="species_ab_table_fh",
-            type=argparse.FileType("r"),
+            dest="species_ab_table_fp",
+            type=readable_file,
             required=cur_parser != test_install_parser,
             metavar="SPECIES_ABUNDANCE_TABLE",
             help=argparse.SUPPRESS
@@ -112,8 +145,8 @@ def get_arguments() -> argparse.Namespace:
         )
         cur_parser.add_argument(
             "-s2",
-            dest="species_ab_table_fh_2",
-            type=argparse.FileType("r"),
+            dest="species_ab_table_2_fp",
+            type=readable_file,
             required=False,
             metavar="SPECIES_ABUNDANCE_TABLE_2",
             help=argparse.SUPPRESS
@@ -140,8 +173,8 @@ def get_arguments() -> argparse.Namespace:
     for cur_parser in search_conta_parser, easy_wf_parser, test_install_parser:
         cur_parser.add_argument(
             "-m",
-            dest="rf_model_fh",
-            type=argparse.FileType("rb"),
+            dest="rf_model_fp",
+            type=readable_file,
             required=False,
             default=search_conta_defaults.MODEL_FILE,
             metavar="RF_MODEL_FILE",
@@ -174,8 +207,8 @@ def get_arguments() -> argparse.Namespace:
         )
         cur_parser.add_argument(
             "-c",
-            dest="conta_events_fh",
-            type=argparse.FileType("w"),
+            dest="conta_events_fp",
+            type=writable_file,
             required=cur_parser != test_install_parser,
             metavar="CONTAMINATION_EVENTS_FILE",
             help=argparse.SUPPRESS
@@ -185,8 +218,8 @@ def get_arguments() -> argparse.Namespace:
 
     plot_conta_parser.add_argument(
         "-c",
-        dest="conta_events_fh",
-        type=argparse.FileType("r"),
+        dest="conta_events_fp",
+        type=readable_file,
         required=True,
         metavar="CONTAMINATION_EVENTS_FILE",
         help="Input TSV file listing all contaminations events.",
@@ -195,8 +228,8 @@ def get_arguments() -> argparse.Namespace:
     for cur_parser in plot_conta_parser, easy_wf_parser, test_install_parser:
         cur_parser.add_argument(
             "-r",
-            dest="pdf_report_fh",
-            type=argparse.FileType("wb"),
+            dest="pdf_report_fp",
+            type=writable_file,
             required=cur_parser != test_install_parser,
             metavar="PDF_REPORT_FILE",
             help=argparse.SUPPRESS
@@ -206,16 +239,16 @@ def get_arguments() -> argparse.Namespace:
 
     train_model_parser.add_argument(
         "-m",
-        dest="model_fh",
-        type=argparse.FileType("wb"),
+        dest="model_fp",
+        type=writable_file,
         required=True,
         metavar="MODEL_FILE",
         help="Output file storing the trained Random Forest model",
     )
     train_model_parser.add_argument(
         "-r",
-        dest="json_report_fh",
-        type=argparse.FileType("w"),
+        dest="json_report_fp",
+        type=writable_file,
         required=True,
         metavar="JSON_REPORT_FILE",
         help="Output JSON file storing classification performance metrics "
@@ -320,75 +353,79 @@ def main() -> None:
 
     if args.command == "test_install":
         test_install = TestInstall(args.keep_results)
-        args.species_ab_table_fh = test_install.species_ab_table_fh
-        args.conta_events_fh = test_install.conta_events_fh
-        args.pdf_report_fh = test_install.pdf_report_fh
+        args.species_ab_table_fp = test_install.species_ab_table_fp
+        args.conta_events_fp = test_install.conta_events_fp
+        args.pdf_report_fp = test_install.pdf_report_fp
 
     # Add comment line in output file describing execution context
     if args.command in ("easy_wf", "search_conta"):
         exec_desc = ExecutionDescription(
-            args.species_ab_table_fh,
-            args.species_ab_table_fh_2,
-            args.rf_model_fh,
+            args.species_ab_table_fp,
+            args.species_ab_table_2_fp,
+            args.rf_model_fp,
             args.filtering_ab_thr_factor,
             args.probability_cutoff,
             args.rate_cutoff,
         )
-        print(exec_desc, file=args.conta_events_fh)
+
+        with open(args.conta_events_fp, "w", encoding="utf8") as conta_events_fh:
+            print(exec_desc, file=conta_events_fh)
 
     # Load first species abundance table
-    species_ab_table = ab_table_utils.read_filter_normalize(
-        args.species_ab_table_fh,
-        args.filtering_ab_thr_factor,
-    )
-    args.species_ab_table_fh.close()
+    with open(args.species_ab_table_fp, "r", encoding="utf8") as species_ab_table_fh:
+        species_ab_table = ab_table_utils.read_filter_normalize(
+            species_ab_table_fh,
+            args.filtering_ab_thr_factor,
+        )
 
     # Load second species abundance table if necessary
     species_ab_table_2 = None
-    if args.species_ab_table_fh_2 is not None:
-        if args.species_ab_table_fh.name != args.species_ab_table_fh_2.name:
+    if (
+        args.species_ab_table_2_fp is not None
+        and args.species_ab_table_fp != args.species_ab_table_2_fp
+    ):
+        with open(args.species_ab_table_2_fp, "r", encoding="utf8") as species_ab_table_2_fh:
             species_ab_table_2 = ab_table_utils.read_filter_normalize(
-                args.species_ab_table_fh_2,
+                species_ab_table_2_fh,
                 args.filtering_ab_thr_factor,
             )
-            ab_table_utils.compare_species_names(
-                species_ab_table,
-                species_ab_table_2,
-            )
-        args.species_ab_table_fh_2.close()
+        ab_table_utils.compare_species_names(
+            species_ab_table,
+            species_ab_table_2,
+        )
 
     # Search and save contamination events
     if args.command in ("easy_wf", "search_conta", "test_install"):
-        conta_events = run_search_conta(
-            species_ab_table,
-            species_ab_table_2,
-            args.rf_model_fh,
-            args.probability_cutoff,
-            args.rate_cutoff,
-            args.nproc,
-        )
-        args.rf_model_fh.close()
-        ContaminationEventIO.write_tsv(conta_events, args.conta_events_fh)
-        args.conta_events_fh.close()
+        with open(args.rf_model_fp, "rb") as rf_model_fh:
+            conta_events = run_search_conta(
+                species_ab_table,
+                species_ab_table_2,
+                rf_model_fh,
+                args.probability_cutoff,
+                args.rate_cutoff,
+                args.nproc,
+            )
+        with open(args.conta_events_fp, "a", encoding="utf8") as conta_events_fh:
+            ContaminationEventIO.write_tsv(conta_events, conta_events_fh)
 
     # Or load them
     if args.command == "plot_conta":
-        conta_events = ContaminationEventIO.read_tsv(args.conta_events_fh)
-        args.conta_events_fh.close()
+        with open(args.conta_events_fp, "r", encoding="utf8") as conta_events_fh:
+            conta_events = ContaminationEventIO.read_tsv(conta_events_fh)
 
     # Create PDF with scatterplots
     if args.command in ("plot_conta", "easy_wf", "test_install"):
-        run_plot_conta(
-            species_ab_table,
-            species_ab_table_2,
-            conta_events,
-            args.pdf_report_fh,
-            args.nrow,
-            args.ncol,
-            args.no_conta_line,
-            args.color_conta_species,
-        )
-        args.pdf_report_fh.close()
+        with open(args.pdf_report_fp, "wb") as pdf_report_fh:
+            run_plot_conta(
+                species_ab_table,
+                species_ab_table_2,
+                conta_events,
+                pdf_report_fh,
+                args.nrow,
+                args.ncol,
+                args.no_conta_line,
+                args.color_conta_species,
+            )
 
     if args.command in ("easy_wf", "search_conta") and conta_events:
         logging.warning("Contamination events may be false positives, especially "
@@ -399,21 +436,23 @@ def main() -> None:
                             "scatterplots generated by the plot_conta subcommand")
         else:
             logging.warning("Check each reported contamination event by inspecting "
-                "scatterplots in the PDF report %s", Path(args.pdf_report_fh.name).resolve())
+                "scatterplots in the PDF report %s", args.pdf_report_fp)
 
     if args.command == "test_install":
         test_install.check_results()
 
     if args.command == "train_model":
-        run_train_model(
-            species_ab_table,
-            args.model_fh,
-            args.json_report_fh,
-            args.test_size,
-            args.ntrees,
-            args.rng_seed,
-            args.nproc,
-        )
+        with open(args.model_fp, "wb") as model_fh, \
+             open(args.json_report_fp, "w", encoding="utf8") as json_report_fh:
+            run_train_model(
+                species_ab_table,
+                model_fh,
+                json_report_fh,
+                args.test_size,
+                args.ntrees,
+                args.rng_seed,
+                args.nproc,
+            )
 
 if __name__ == "__main__":
     main()

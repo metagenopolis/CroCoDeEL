@@ -1,6 +1,5 @@
 from multiprocessing import Pool
 import logging
-from pathlib import Path
 from time import perf_counter
 from typing import BinaryIO, TextIO, Final, Optional
 import json
@@ -110,7 +109,7 @@ def run_train_model(
     # Save the model
     rf_model.set_params(n_jobs=1)
     joblib.dump(rf_model, model_fh, compress=3)
-    logging.info("Model saved to %s", Path(model_fh.name).resolve())
+    logging.info("Model saved to %s", model_fh.name)
     model_fh.close()
 
     # Create and save the performance report
@@ -134,7 +133,7 @@ def run_train_model(
     }
     json.dump(performance_report, json_report_fh, indent=4)
     logging.info(
-        "Model performance report saved to %s", Path(json_report_fh.name).resolve()
+        "Model performance report saved to %s", json_report_fh.name
     )
     json_report_fh.close()
 

@@ -1,6 +1,5 @@
 from typing import BinaryIO, Optional, Final
 import logging
-from pathlib import Path
 from time import perf_counter
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
@@ -37,7 +36,7 @@ def run_plot_conta(
         color_conta_species,
     ).save_to_pdf(pdf_report_fh)
     logging.info("PDF report generated in %.1f seconds", perf_counter() - start)
-    logging.info("PDF report saved in %s", Path(pdf_report_fh.name).resolve())
+    logging.info("PDF report saved in %s", pdf_report_fh.name)
     pdf_report_fh.close()
 
 

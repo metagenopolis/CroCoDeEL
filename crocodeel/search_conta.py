@@ -3,7 +3,6 @@ from itertools import product
 import logging
 from time import perf_counter
 from typing import BinaryIO, Optional, Final, Iterator
-from pathlib import Path
 import importlib.resources
 import warnings
 import joblib

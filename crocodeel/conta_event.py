@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 import csv
 from typing import TextIO
-from pathlib import Path
 import logging
 
 
@@ -43,7 +42,7 @@ class ContaminationEventIO:
             "%d contamination event%s loaded from %s",
             len(conta_events),
             "s" if len(conta_events) > 1 else "",
-            Path(fh.name).resolve(),
+            fh.name,
         )
 
         return conta_events
@@ -81,5 +80,5 @@ class ContaminationEventIO:
 
         logging.info(
             "Contamination events saved in %s",
-            Path(fh.name).resolve(),
+            fh.name,
         )

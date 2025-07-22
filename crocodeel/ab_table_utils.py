@@ -1,14 +1,13 @@
 import logging
 import sys
 from typing import TextIO, Optional
-from pathlib import Path
 import numpy as np
 import pandas as pd
 
 
 def read(fh: TextIO) -> pd.DataFrame:
     # Read table
-    logging.info("Reading %s", Path(fh.name).resolve())
+    logging.info("Reading %s", fh.name)
     species_ab_table = pd.read_csv(fh, sep="\t", header=0, index_col=0, comment="#")
     num_species = species_ab_table.shape[0]
     num_samples = species_ab_table.shape[1]
