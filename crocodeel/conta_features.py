@@ -33,6 +33,12 @@ class ContaminationFeatureExtractor:
     def __init__(self, species_ab_table: pd.DataFrame):
         self.species_ab_table = species_ab_table
 
+        self.ransac = RANSACRegressor(
+            estimator=_UnitSlopeRegression(),
+            random_state=42,
+            residual_threshold=0.2
+        )
+
     def extract(self, source: str, target: str) -> Optional[ContaminationFeatures]:
         # Step 1: Selection of candidate species for a contamination line
         (
@@ -49,7 +55,7 @@ class ContaminationFeatureExtractor:
 
         # Step 2: Search for a potential contamination line
         # Use RANSAC regressor to estimate its offset
-        candidate_species_inliers, conta_line_offset = self._search_potential_conta_line(
+        candidate_species_inliers, conta_line_offset = self._estimate_conta_line_offset(
             candidate_species_conta_line
         )
 
@@ -114,17 +120,14 @@ class ContaminationFeatureExtractor:
             candidates_species_idxs,
         )
 
-    def _search_potential_conta_line(self, candidate_species_conta_line):
-        ransac = RANSACRegressor(
-            estimator=_UnitSlopeRegression(), random_state=42, residual_threshold=0.2
-        )
-        ransac.fit(
+    def _estimate_conta_line_offset(self, candidate_species_conta_line):
+        self.ransac.fit(
             candidate_species_conta_line[:, [0]],
             candidate_species_conta_line[:, [1]],
         )
 
-        candidate_species_inliers = ransac.inlier_mask_
-        conta_line_offset = ransac.estimator_.coeffs[1]
+        candidate_species_inliers = self.ransac.inlier_mask_
+        conta_line_offset = self.ransac.estimator_.coeffs[1]
 
         return candidate_species_inliers, conta_line_offset
 
