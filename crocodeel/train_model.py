@@ -12,11 +12,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 import joblib
-from crocodeel.common import (
-    select_candidate_species_conta_line,
-    search_potential_conta_line,
-    compute_conta_line_features
-)
+from crocodeel.conta_features import ContaminationFeatureExtractor
 
 
 def run_train_model(
@@ -204,31 +200,19 @@ class Defaults:
 class FeaturesComputerWorker:
 
     def __init__(self, species_ab_table: pd.DataFrame) -> None:
-        self.species_ab_table = species_ab_table
+        self.feature_extractor = ContaminationFeatureExtractor(species_ab_table)
 
     def compute_features_sample_pair(
         self, sample_pair: tuple[str, str]
     ) -> Optional[np.ndarray]:
         source, target = sample_pair
-        # Search a potential contamination line
-        (cur_sample_pair_species_ab, candidate_species_conta_line, _) = (
-            select_candidate_species_conta_line(self.species_ab_table, source, target)
-        )
 
-        if candidate_species_conta_line.shape[0] <= 5:
+        conta_line_features = self.feature_extractor.extract(source, target)
+
+        if conta_line_features is None:
             return None
-
-        candidate_species_inliers, conta_line_offset = search_potential_conta_line(
-            candidate_species_conta_line
-        )
-        candidate_species_inliers = candidate_species_conta_line[
-            candidate_species_inliers
-        ]
-        conta_line_features = compute_conta_line_features(
-            conta_line_offset, candidate_species_inliers, cur_sample_pair_species_ab
-        )
-
-        return conta_line_features
+      
+        return conta_line_features.feature_vector
 
 
 class FeaturesComputerDriver:
