@@ -214,8 +214,8 @@ class FeaturesComputerWorker:
 
         if conta_line_features is None:
             return None
-      
-        return conta_line_features.feature_vector
+
+        return conta_line_features.values
 
 
 class FeaturesComputerDriver:

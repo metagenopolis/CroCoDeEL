@@ -100,14 +100,14 @@ class ContaminationSearcherWorker:
 
         if source == target:
             return None
- 
+
         features = self.feature_extractor.extract(source, target)
 
         if features is None:
             return None
 
         conta_probability = self.rf_classifier.predict_proba(
-            features.feature_vector.reshape(1, -1)
+            features.values.reshape(1, -1)
         )
         conta_probability = conta_probability[0, 1]
 

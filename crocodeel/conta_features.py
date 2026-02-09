@@ -11,7 +11,7 @@ from scipy.stats import spearmanr
 class ContaminationFeatures:
     NUM_FEATURES: ClassVar[int] = 10
 
-    feature_vector: np.ndarray
+    values: np.ndarray
     conta_line_offset: float
     conta_line_species: list[str]
 
@@ -71,7 +71,7 @@ class ContaminationFeatureExtractor:
         )
 
         return ContaminationFeatures(
-            feature_vector=conta_line_features,
+            values=conta_line_features,
             conta_line_offset=conta_line_offset,
             conta_line_species = candidate_species_inliers_idxs.tolist())
 
