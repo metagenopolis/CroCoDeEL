@@ -75,10 +75,6 @@ class ContaminationPlotsReport:
             self.species_ab_table.replace(-np.inf, self.pseudo_zero, inplace=True)
 
     def _create_plot(self, conta_event: ContaminationEvent, ax: Axes) -> None:
-        spearman_rho = self.species_ab_table[conta_event.target].corr(
-            self.species_ab_table[conta_event.source], method="spearman"
-        )
-
         # Do not show species absent in both samples
         # for faster rendering and reduce PDF file size
         non_zero_species = (
@@ -145,8 +141,7 @@ class ContaminationPlotsReport:
 
         ax.set_title(
             f"prob = {conta_event.probability}, "
-            f"rate = {round(conta_event.rate * 100, 2)}%, "
-            f"rho = {round(spearman_rho, 2)}"
+            f"rate = {round(conta_event.rate * 100, 2)}%"
         )
 
     def save_to_pdf(self, pdf_fh: BinaryIO) -> None:
