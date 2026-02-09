@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "crocodeel"
-version = "1.0.8"
+version = "1.1.0"
 description = "CroCoDeEL is a tool that detects cross-sample (aka well-to-well) contamination in shotgun metagenomic data"
 authors = [
     "Lindsay Goulet <lindsay.goulet@inrae.fr>",
