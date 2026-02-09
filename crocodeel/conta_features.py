@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Final, ClassVar, Optional
 from dataclasses import dataclass
 import numpy as np
 import pandas as pd
@@ -9,7 +9,8 @@ from scipy.stats import spearmanr
 
 @dataclass
 class ContaminationFeatures:
-    """Standardized output for feature extraction."""
+    NUM_FEATURES: ClassVar[int] = 10
+
     feature_vector: np.ndarray
     rate: float
     contamination_specific_species: list[str]
@@ -27,6 +28,8 @@ class _UnitSlopeRegression(LinearRegression):
         return mean_squared_error(y, self.predict(X))
 
 class ContaminationFeatureExtractor:
+    CONTA_LINE_MIN_NUM_SPECIES: Final[int] = 6
+
     def __init__(self, species_ab_table: pd.DataFrame):
         self.species_ab_table = species_ab_table
 
@@ -41,7 +44,7 @@ class ContaminationFeatureExtractor:
         )
 
         # Not enough candidates species for a contamination line
-        if candidate_species_conta_line.shape[0] <= 5:
+        if candidate_species_conta_line.shape[0] < self.CONTA_LINE_MIN_NUM_SPECIES:
             return None
 
         # Step 2: Search for a potential contamination line
@@ -52,7 +55,7 @@ class ContaminationFeatureExtractor:
 
         # Not enough inlier species in the potential contamination line
         # no contamination found, exit
-        if np.sum(candidate_species_inliers) <= 5:
+        if np.sum(candidate_species_inliers) < self.CONTA_LINE_MIN_NUM_SPECIES:
             return None
 
         candidate_species_inliers_idxs = candidate_species_conta_line_idxs[

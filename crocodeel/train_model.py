@@ -12,7 +12,10 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 import joblib
-from crocodeel.conta_features import ContaminationFeatureExtractor
+from crocodeel.conta_features import (
+    ContaminationFeatures,
+    ContaminationFeatureExtractor,
+)
 
 
 def run_train_model(
@@ -232,8 +235,7 @@ class FeaturesComputerDriver:
     def compute_all_features(self) -> np.ndarray:
         worker = FeaturesComputerWorker(self.species_ab_table)
 
-        # TODO: replace hardcoded number of features by a constant
-        all_features = np.empty((self.num_sample_pairs, 10))
+        all_features = np.empty((self.num_sample_pairs, ContaminationFeatures.NUM_FEATURES))
 
         with Pool(processes=self.nproc) as pool:
             all_tasks = pool.imap(
