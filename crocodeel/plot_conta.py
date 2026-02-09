@@ -96,7 +96,7 @@ class ContaminationPlotsReport:
             edge_colors = [
                 (
                     "orange"
-                    if species in conta_event.contamination_specific_species
+                    if species in conta_event.conta_line_species
                     else "black"
                 )
                 for species in self.species_ab_table.index[non_zero_species]

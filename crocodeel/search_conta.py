@@ -96,27 +96,27 @@ class ContaminationSearcherWorker:
         self.rf_classifier = rf_classifier
 
     def classify_sample_pair(self, sample_pair: tuple[str, str]) -> Optional[ContaminationEvent]:
-        source_sample_name, target_sample_name = sample_pair
+        source, target = sample_pair
 
-        if source_sample_name == target_sample_name:
+        if source == target:
             return None
  
-        conta_line_features = self.feature_extractor.extract(source_sample_name, target_sample_name)
+        features = self.feature_extractor.extract(source, target)
 
-        if conta_line_features is None:
+        if features is None:
             return None
 
         conta_probability = self.rf_classifier.predict_proba(
-            conta_line_features.feature_vector.reshape(1, -1)
+            features.feature_vector.reshape(1, -1)
         )
         conta_probability = conta_probability[0, 1]
 
         return ContaminationEvent(
-            source_sample_name,
-            target_sample_name,
-            rate=conta_line_features.rate,
+            source,
+            target,
+            rate=np.round(10 ** (-features.conta_line_offset), 4),
             probability=conta_probability,
-            contamination_specific_species=conta_line_features.contamination_specific_species,
+            conta_line_species=features.conta_line_species,
         )
 
 

@@ -12,8 +12,8 @@ class ContaminationFeatures:
     NUM_FEATURES: ClassVar[int] = 10
 
     feature_vector: np.ndarray
-    rate: float
-    contamination_specific_species: list[str]
+    conta_line_offset: float
+    conta_line_species: list[str]
 
 class _UnitSlopeRegression(LinearRegression):
     def fit(self, X, y, sample_weight=None):
@@ -33,14 +33,14 @@ class ContaminationFeatureExtractor:
     def __init__(self, species_ab_table: pd.DataFrame):
         self.species_ab_table = species_ab_table
 
-    def extract(self, source_sample_name: str, target_sample_name: str) -> Optional[ContaminationFeatures]:
+    def extract(self, source: str, target: str) -> Optional[ContaminationFeatures]:
         # Step 1: Selection of candidate species for a contamination line
         (
             cur_sample_pair_species_ab,
             candidate_species_conta_line,
             candidate_species_conta_line_idxs,
         ) = self._select_candidate_species_conta_line(
-            source_sample_name, target_sample_name
+            source, target
         )
 
         # Not enough candidates species for a contamination line
@@ -66,26 +66,25 @@ class ContaminationFeatureExtractor:
         ]
 
         # Step 3: Compute features describing the potential contamination line
-        conta_line_features = self._compute_conta_line_features(
+        conta_line_features = self._compute_features(
             conta_line_offset, candidate_species_inliers, cur_sample_pair_species_ab
         )
 
-        # 4. Package Result
         return ContaminationFeatures(
             feature_vector=conta_line_features,
-            rate=np.round(10 ** (-conta_line_offset), 4),
-            contamination_specific_species = candidate_species_inliers_idxs.tolist())
+            conta_line_offset=conta_line_offset,
+            conta_line_species = candidate_species_inliers_idxs.tolist())
 
-    def _select_candidate_species_conta_line(self, source_sample_name: str, target_sample_name: str):
+    def _select_candidate_species_conta_line(self, source: str, target: str):
         # Select abundance of all species from the current sample pair
         cur_sample_pair_species_ab = self.species_ab_table[
-            [target_sample_name, source_sample_name]
+            [target, source]
         ]
         # Select species shared by both samples but more abundant in the source
         shared_species_upper_triangle_ab = (
-            cur_sample_pair_species_ab[source_sample_name]
-            >= cur_sample_pair_species_ab[target_sample_name]
-        ) & (cur_sample_pair_species_ab[target_sample_name] != -np.inf)
+            cur_sample_pair_species_ab[source]
+            >= cur_sample_pair_species_ab[target]
+        ) & (cur_sample_pair_species_ab[target] != -np.inf)
 
         # convert to numpy array
         shared_species_upper_triangle_ab = cur_sample_pair_species_ab[
@@ -129,7 +128,7 @@ class ContaminationFeatureExtractor:
 
         return candidate_species_inliers, conta_line_offset
 
-    def _compute_conta_line_features(
+    def _compute_features(
         self, conta_line_offset, candidate_species_inliers, cur_sample_pair_species_ab
     ):
         # Species detected only in the source sample

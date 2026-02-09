@@ -10,7 +10,7 @@ class ContaminationEvent:
     target: str
     rate: float = field(default=0.0)
     probability: float = field(default=0.0)
-    contamination_specific_species: list[str] = field(default_factory=lambda: [])
+    conta_line_species: list[str] = field(default_factory=lambda: [])
 
 
 class ContaminationEventIO:
@@ -72,7 +72,7 @@ class ContaminationEventIO:
                         conta_event.target,
                         str(conta_event.rate),
                         str(conta_event.probability),
-                        ",".join(conta_event.contamination_specific_species),
+                        ",".join(conta_event.conta_line_species),
                     ]
                 ),
                 file=fh,
