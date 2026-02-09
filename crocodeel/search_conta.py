@@ -79,7 +79,7 @@ def run_search_conta(
 
 class Defaults:
     MODEL_FILE: Final[Path] = importlib.resources.files().joinpath(
-        "models", "crocodeel_rf_Mar2023.joblib"
+        "models", "crocodeel_rf_Feb2026.joblib"
     )
     PROBABILITY_CUTOFF: Final[float] = 0.5
     RATE_CUTOFF: Final[float] = 0.0
