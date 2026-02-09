@@ -196,7 +196,7 @@ def _reconstruct_sample_pairs(
 
 class Defaults:
     TEST_SIZE: Final[float] = 0.3
-    NTREES: Final[int] = 1000
+    NTREES: Final[int] = 100
     RNG_SEED: Final[int] = 0
 
 
