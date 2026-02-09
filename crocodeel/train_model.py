@@ -210,12 +210,12 @@ class FeaturesComputerWorker:
     ) -> Optional[np.ndarray]:
         source, target = sample_pair
 
-        conta_line_features = self.feature_extractor.extract(source, target)
+        features = self.feature_extractor.extract(source, target)
 
-        if conta_line_features is None:
+        if features is None:
             return None
 
-        return conta_line_features.values
+        return features.values
 
 
 class FeaturesComputerDriver:
