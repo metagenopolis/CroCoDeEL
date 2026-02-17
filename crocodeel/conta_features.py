@@ -29,127 +29,139 @@ class _UnitSlopeRegression(LinearRegression):
 
 class ContaminationFeatureExtractor:
     CONTA_LINE_MIN_NUM_SPECIES: Final[int] = 6
+    UPPER_LEFT_QUADRANT_MAX_NUM_SPECIES: Final[int] = 2
+    RANSAC_RANDOM_STATE: Final[int] = 42
+    RANSAC_RESIDUAL_THRESHOLD: Final[float] = 0.2
 
     def __init__(self, species_ab_table: pd.DataFrame):
         self.species_ab_table = species_ab_table
 
         self.ransac = RANSACRegressor(
             estimator=_UnitSlopeRegression(),
-            random_state=42,
-            residual_threshold=0.2
+            random_state=self.RANSAC_RANDOM_STATE,
+            residual_threshold=self.RANSAC_RESIDUAL_THRESHOLD,
         )
 
     def extract(self, source: str, target: str) -> Optional[ContaminationFeatures]:
         # Step 1: Selection of candidate species for a contamination line
         (
-            cur_sample_pair_species_ab,
-            candidate_species_conta_line,
-            candidate_species_conta_line_idxs,
-        ) = self._select_candidate_species_conta_line(
-            source, target
-        )
+            sample_pair_species_ab,
+            conta_line_candidate_species_ab,
+            conta_line_candidate_species_names,
+        ) = self._get_conta_line_candidate_species(source, target)
 
         # Not enough candidates species for a contamination line
-        if candidate_species_conta_line.shape[0] < self.CONTA_LINE_MIN_NUM_SPECIES:
+        if conta_line_candidate_species_ab.shape[0] < self.CONTA_LINE_MIN_NUM_SPECIES:
             return None
 
         # Step 2: Search for a potential contamination line
         # Use RANSAC regressor to estimate its offset
-        candidate_species_inliers, conta_line_offset = self._estimate_conta_line_offset(
-            candidate_species_conta_line
+        mask_conta_line_species, conta_line_offset = self._estimate_conta_line_offset(
+            conta_line_candidate_species_ab
         )
 
         # Not enough inlier species in the potential contamination line
         # no contamination found, exit
-        if np.sum(candidate_species_inliers) < self.CONTA_LINE_MIN_NUM_SPECIES:
+        if np.sum(mask_conta_line_species) < self.CONTA_LINE_MIN_NUM_SPECIES:
             return None
 
-        candidate_species_inliers_idxs = candidate_species_conta_line_idxs[
-            candidate_species_inliers
+        conta_line_species_names = conta_line_candidate_species_names[
+            mask_conta_line_species
         ]
-        candidate_species_inliers = candidate_species_conta_line[
-            candidate_species_inliers
+        conta_line_species_ab = conta_line_candidate_species_ab[
+            mask_conta_line_species
         ]
 
         # Step 3: Compute features describing the potential contamination line
         conta_line_features = self._compute_features(
-            conta_line_offset, candidate_species_inliers, cur_sample_pair_species_ab
+            sample_pair_species_ab, conta_line_species_ab, conta_line_offset,
         )
 
         return ContaminationFeatures(
             values=conta_line_features,
             conta_line_offset=conta_line_offset,
-            conta_line_species = candidate_species_inliers_idxs.tolist())
+            conta_line_species = conta_line_species_names.tolist())
 
-    def _select_candidate_species_conta_line(self, source: str, target: str):
+    def _get_conta_line_candidate_species(
+        self, source: str, target: str
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         # Select abundance of all species from the current sample pair
-        cur_sample_pair_species_ab = self.species_ab_table[
+        sample_pair_species_ab = self.species_ab_table[
             [target, source]
         ]
+
         # Select species shared by both samples but more abundant in the source
-        shared_species_upper_triangle_ab = (
-            cur_sample_pair_species_ab[source]
-            >= cur_sample_pair_species_ab[target]
-        ) & (cur_sample_pair_species_ab[target] != -np.inf)
+        mask_upper_triangle = (
+            sample_pair_species_ab[source]
+            >= sample_pair_species_ab[target]
+        ) & (sample_pair_species_ab[target] != -np.inf)
 
-        # convert to numpy array
-        shared_species_upper_triangle_ab = cur_sample_pair_species_ab[
-            shared_species_upper_triangle_ab
+        upper_triangle_species_ab = sample_pair_species_ab[
+            mask_upper_triangle
+        ].to_numpy()
+        upper_triangle_species_names = sample_pair_species_ab.index.values[
+            mask_upper_triangle
         ]
-        shared_species_upper_triangle_idxs = shared_species_upper_triangle_ab.index.values
-        cur_sample_pair_species_ab = cur_sample_pair_species_ab.to_numpy()
-        shared_species_upper_triangle_ab = shared_species_upper_triangle_ab.to_numpy()
 
-        # Test each species in the upper left triangle as a candidate
-        candidates_species = []
-        for species_id, species_ab in enumerate(shared_species_upper_triangle_ab):
-            num_species_in_upper_left_quadrant = np.sum(
-                (shared_species_upper_triangle_ab[:, 0] <= species_ab[0])
-                & (shared_species_upper_triangle_ab[:, 1] >= species_ab[1])
-            )
-            num_species_in_upper_left_quadrant -= 1
-            # The species is selected if no more than 2 other species are in upper left quadrant
-            if num_species_in_upper_left_quadrant <= 2:
-                candidates_species.append(species_id)
-        candidates_species_idxs = shared_species_upper_triangle_idxs[candidates_species]
-        candidates_species = shared_species_upper_triangle_ab[candidates_species]
+        # Get candidate species for a contamination line
+        x = upper_triangle_species_ab[:, 0]  # target
+        y = upper_triangle_species_ab[:, 1]  # source
+
+        # Broadcasting: Compare every element to every other element
+        # Shapes: (N, 1) vs (1, N) -> Result (N, N) matrices
+        is_left = x[:, np.newaxis] <= x[np.newaxis, :]   # j is to the left of i
+        is_upper = y[:, np.newaxis] >= y[np.newaxis, :]  # j is above i
+
+        # Sum columns to get count for each species i
+        # Subtract 1 because a species is always in its own upper-left quadrant
+        upper_left_quadrant_num_species = np.sum(is_left & is_upper, axis=0) - 1
+
+        # Filter candidates
+        mask_candidate_species = upper_left_quadrant_num_species <= self.UPPER_LEFT_QUADRANT_MAX_NUM_SPECIES
+        candidates_species = upper_triangle_species_ab[mask_candidate_species]
+        candidates_species_names = upper_triangle_species_names[mask_candidate_species]
 
         return (
-            cur_sample_pair_species_ab,
+            sample_pair_species_ab.to_numpy(),
             candidates_species,
-            candidates_species_idxs,
+            candidates_species_names,
         )
 
-    def _estimate_conta_line_offset(self, candidate_species_conta_line):
+    def _estimate_conta_line_offset(
+        self, conta_line_candidate_species: np.ndarray
+    ) -> tuple[np.ndarray, float]:
         self.ransac.fit(
-            candidate_species_conta_line[:, [0]],
-            candidate_species_conta_line[:, [1]],
+            conta_line_candidate_species[:, [0]],  # target
+            conta_line_candidate_species[:, [1]],  # source
         )
 
-        candidate_species_inliers = self.ransac.inlier_mask_
+        mask_conta_line_species = self.ransac.inlier_mask_
         conta_line_offset = self.ransac.estimator_.coeffs[1]
 
-        return candidate_species_inliers, conta_line_offset
+        return mask_conta_line_species, conta_line_offset
 
     def _compute_features(
-        self, conta_line_offset, candidate_species_inliers, cur_sample_pair_species_ab
-    ):
+        self,
+        sample_pair_species_ab: np.ndarray,
+        conta_line_species_ab: np.ndarray,
+        conta_line_offset: float,
+    ) -> np.ndarray:
         # Species detected only in the source sample
-        source_specific_species_ab = cur_sample_pair_species_ab[
-            (cur_sample_pair_species_ab[:, 0] == -np.inf)
-            & (cur_sample_pair_species_ab[:, 1] != -np.inf),
+        source_specific_species_ab = sample_pair_species_ab[
+            (sample_pair_species_ab[:, 0] == -np.inf)
+            & (sample_pair_species_ab[:, 1] != -np.inf),
             :,
         ]
 
         # Shared species between source and target samples
-        shared_species_ab = cur_sample_pair_species_ab[
-            (cur_sample_pair_species_ab[:, 0] != -np.inf)
-            & (cur_sample_pair_species_ab[:, 1] != -np.inf)
+        shared_species_ab = sample_pair_species_ab[
+            (sample_pair_species_ab[:, 0] != -np.inf)
+            & (sample_pair_species_ab[:, 1] != -np.inf)
         ]
         num_shared_species = shared_species_ab.shape[0]
 
         # Feature 1
-        num_species_conta_line = candidate_species_inliers.shape[0]
+        num_species_conta_line = conta_line_species_ab.shape[0]
 
         # Feature 2
         ratio_species_conta_line_to_shared_species = (
@@ -168,23 +180,23 @@ class ContaminationFeatureExtractor:
 
         # Feature 3
         mean_distance_to_nearest_neighbors = self._get_mean_distance_to_nearest_neighbors(
-            candidate_species_inliers
+            conta_line_species_ab
         )
 
         # Feature 4
         mean_distance_to_farthest_neighbors = self._get_mean_distance_to_farthest_neighbors(
-            candidate_species_inliers
+            conta_line_species_ab
         )
 
         # Feature 5
         spearman_corr_all_species = spearmanr(
-            cur_sample_pair_species_ab[:, 0], cur_sample_pair_species_ab[:, 1]
+            sample_pair_species_ab[:, 0], sample_pair_species_ab[:, 1]
         )[0]
 
         # Feature 6
         distances = np.abs(
-            candidate_species_inliers[:, 1]
-            - candidate_species_inliers[:, 0]
+            conta_line_species_ab[:, 1]
+            - conta_line_species_ab[:, 0]
             - conta_line_offset
         ) / np.sqrt(2)
         mean_distance_to_the_contamination_line = distances.mean()
@@ -206,7 +218,7 @@ class ContaminationFeatureExtractor:
             diff_mean_ab_top10_source_species_vs_ab_cutoff1 = (
                 self._get_diff_mean_ab_top10_source_species_vs_ab_cutoff1(
                     mean_ab_top10_source_specific_species,
-                    cur_sample_pair_species_ab,
+                    sample_pair_species_ab,
                     conta_line_offset,
                 )
             )
@@ -215,7 +227,7 @@ class ContaminationFeatureExtractor:
             diff_mean_ab_top10_source_species_vs_ab_cutoff2 = (
                 self._get_diff_mean_ab_top10_source_species_vs_ab_cutoff2(
                     mean_ab_top10_source_specific_species,
-                    candidate_species_inliers,
+                    conta_line_species_ab,
                 )
             )
 
@@ -234,7 +246,6 @@ class ContaminationFeatureExtractor:
             ]
         )
 
-
     def _get_mean_ab_top_source_specific_species(
         self,
         source_specific_species_ab,
@@ -252,16 +263,15 @@ class ContaminationFeatureExtractor:
         top_n_idx = np.argpartition(-values, num_species)[:num_species]
         return values[top_n_idx].mean()
 
-
     def _get_diff_mean_ab_top10_source_species_vs_ab_cutoff1(
         self,
         mean_ab_top10_source_specific_species,
-        cur_sample_pair_species_ab,
+        sample_pair_species_ab,
         conta_line_offset
     ):
         # Define a pseudo zero
         min_non_zero = np.min(
-            cur_sample_pair_species_ab[cur_sample_pair_species_ab[:, 0] != -np.inf, 0]
+            sample_pair_species_ab[sample_pair_species_ab[:, 0] != -np.inf, 0]
         )
         pseudo_zero = min_non_zero - 1
 
@@ -270,7 +280,6 @@ class ContaminationFeatureExtractor:
 
         # '|m-c1|' in the paper
         return np.abs(mean_ab_top10_source_specific_species - ab_cutoff1)
-
 
     def _get_diff_mean_ab_top10_source_species_vs_ab_cutoff2(
         self,
@@ -290,7 +299,6 @@ class ContaminationFeatureExtractor:
 
         # '|m-c2|' in the paper
         return np.abs(mean_ab_top10_source_specific_species - ab_cutoff2)
-
 
     def _get_mean_distance_to_nearest_neighbors(self, data, num_neighbors=5):
         """"""
