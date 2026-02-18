@@ -1,6 +1,8 @@
 name: GitLab mirroring
 
 on: [ push, delete, create ]
+permissions:
+  contents: read
 
 # Ensures that only one mirror task will run at a time.
 concurrency:
