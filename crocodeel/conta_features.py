@@ -35,6 +35,7 @@ class _UnitSlopeRegression(RegressorMixin, BaseEstimator):
 class ContaminationFeatureExtractor:
     CONTA_LINE_MIN_NUM_SPECIES: Final[int] = 6
     UPPER_LEFT_QUADRANT_MAX_NUM_SPECIES: Final[int] = 2
+    RANSAC_MAX_TRIALS: Final[int] = 30
     RANSAC_RANDOM_STATE: Final[int] = 42
     RANSAC_RESIDUAL_THRESHOLD: Final[float] = 0.2
 
@@ -44,6 +45,7 @@ class ContaminationFeatureExtractor:
         self.ransac = RANSACRegressor(
             estimator=_UnitSlopeRegression(),
             min_samples=2,
+            max_trials=self.RANSAC_MAX_TRIALS,
             random_state=self.RANSAC_RANDOM_STATE,
             residual_threshold=self.RANSAC_RESIDUAL_THRESHOLD,
         )
