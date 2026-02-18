@@ -26,6 +26,6 @@ authors:
     email: guillaume.gautreau@inrae.fr
     affiliation: INRAE
 title: "CroCoDeEL: CROss-sample COntamination DEtection and Estimation of its Level"
-version: 1.1.0
+version: 1.1.1
 doi: 10.1101/2025.01.15.633153
-date-released: 2023-02-09
+date-released: 2023-02-18
