@@ -2,7 +2,8 @@ from typing import Final, ClassVar, Optional
 from dataclasses import dataclass
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import RANSACRegressor, LinearRegression
+from sklearn.linear_model import RANSACRegressor
+from sklearn.base import RegressorMixin, BaseEstimator
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import NearestNeighbors
 from scipy.stats import spearmanr
@@ -15,17 +16,21 @@ class ContaminationFeatures:
     conta_line_offset: float
     conta_line_species: list[str]
 
-class _UnitSlopeRegression(LinearRegression):
-    def fit(self, X, y, sample_weight=None):
-        self.coeffs = (1, np.mean(y) - np.mean(X))
-        return super().fit(X, y)
+class _UnitSlopeRegression(RegressorMixin, BaseEstimator):
+    def __init__(self):
+        self.coef_ = None
+        self.intercept_ = None
+
+    def fit(self, X, y):
+        self.coef_ = 1
+        self.intercept_ = np.mean(y - X)
+        return self
 
     def predict(self, X):
-        y_hat = X * self.coeffs[0] + self.coeffs[1]
-        return y_hat
+        return X + self.intercept_
 
-    def score(self, X, y, sample_weight=None):
-        return mean_squared_error(y, self.predict(X))
+    def score(self, X, y):
+        return mean_squared_error(y,self.predict(X))
 
 class ContaminationFeatureExtractor:
     CONTA_LINE_MIN_NUM_SPECIES: Final[int] = 6
@@ -38,6 +43,7 @@ class ContaminationFeatureExtractor:
 
         self.ransac = RANSACRegressor(
             estimator=_UnitSlopeRegression(),
+            min_samples=2,
             random_state=self.RANSAC_RANDOM_STATE,
             residual_threshold=self.RANSAC_RESIDUAL_THRESHOLD,
         )
@@ -117,7 +123,9 @@ class ContaminationFeatureExtractor:
         upper_left_quadrant_num_species = np.sum(is_left & is_upper, axis=0) - 1
 
         # Filter candidates
-        mask_candidate_species = upper_left_quadrant_num_species <= self.UPPER_LEFT_QUADRANT_MAX_NUM_SPECIES
+        mask_candidate_species = (
+            upper_left_quadrant_num_species <= self.UPPER_LEFT_QUADRANT_MAX_NUM_SPECIES
+        )
         candidates_species = upper_triangle_species_ab[mask_candidate_species]
         candidates_species_names = upper_triangle_species_names[mask_candidate_species]
 
@@ -136,7 +144,7 @@ class ContaminationFeatureExtractor:
         )
 
         mask_conta_line_species = self.ransac.inlier_mask_
-        conta_line_offset = self.ransac.estimator_.coeffs[1]
+        conta_line_offset = self.ransac.estimator_.intercept_
 
         return mask_conta_line_species, conta_line_offset
 
