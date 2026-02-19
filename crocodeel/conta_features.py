@@ -64,11 +64,16 @@ class ContaminationFeatureExtractor:
 
         # Step 2: Search for a potential contamination line
         # Use RANSAC regressor to estimate its offset
-        mask_conta_line_species, conta_line_offset = self._estimate_conta_line_offset(
-            conta_line_candidate_species_ab
-        )
+        try:
+            mask_conta_line_species, conta_line_offset = (
+                self._estimate_conta_line_offset(conta_line_candidate_species_ab)
+            )
+        except ValueError:
+            # RANSAC could not find a valid consensus set
+            # no contamination found, exit
+            return None
 
-        # Not enough inlier species in the potential contamination line
+        # Not enough species in the contamination line
         # no contamination found, exit
         if np.sum(mask_conta_line_species) < self.CONTA_LINE_MIN_NUM_SPECIES:
             return None
@@ -80,7 +85,7 @@ class ContaminationFeatureExtractor:
             mask_conta_line_species
         ]
 
-        # Step 3: Compute features describing the potential contamination line
+        # Step 3: Compute features describing the contamination line
         conta_line_features = self._compute_features(
             sample_pair_species_ab, conta_line_species_ab, conta_line_offset,
         )
@@ -88,7 +93,8 @@ class ContaminationFeatureExtractor:
         return ContaminationFeatures(
             values=conta_line_features,
             conta_line_offset=conta_line_offset,
-            conta_line_species = conta_line_species_names.tolist())
+            conta_line_species=conta_line_species_names.tolist(),
+        )
 
     def _get_conta_line_candidate_species(
         self, source: str, target: str
