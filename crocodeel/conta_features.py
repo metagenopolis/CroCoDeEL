@@ -6,11 +6,10 @@ from sklearn.linear_model import RANSACRegressor
 from sklearn.base import RegressorMixin, BaseEstimator
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import NearestNeighbors
-from scipy.stats import spearmanr
 
 @dataclass
 class ContaminationFeatures:
-    NUM_FEATURES: ClassVar[int] = 10
+    NUM_FEATURES: ClassVar[int] = 6
 
     values: np.ndarray
     conta_line_offset: float
@@ -29,8 +28,8 @@ class _UnitSlopeRegression(RegressorMixin, BaseEstimator):
     def predict(self, X):
         return X + self.intercept_
 
-    def score(self, X, y):
-        return -mean_squared_error(y,self.predict(X))
+    def score(self, X, y, sample_weight=None):
+        return -mean_squared_error(y, self.predict(X), sample_weight=sample_weight)
 
 class ContaminationFeatureExtractor:
     CONTA_LINE_MIN_NUM_SPECIES: Final[int] = 6
@@ -169,47 +168,12 @@ class ContaminationFeatureExtractor:
             :,
         ]
 
-        # Shared species between source and target samples
-        shared_species_ab = sample_pair_species_ab[
-            (sample_pair_species_ab[:, 0] != -np.inf)
-            & (sample_pair_species_ab[:, 1] != -np.inf)
-        ]
-        num_shared_species = shared_species_ab.shape[0]
-
-        # Feature 1
         num_species_conta_line = conta_line_species_ab.shape[0]
 
-        # Feature 2
-        ratio_species_conta_line_to_shared_species = (
-            num_species_conta_line / num_shared_species
-        )
-
-        # Feature 8
-        num_species_above_conta_line = np.sum(
-            shared_species_ab[:, 1] > shared_species_ab[:, 0] + conta_line_offset + 0.2
-        )
-
-        # Feature 7
-        ratio_species_above_line_to_shared_species = (
-            num_species_above_conta_line / num_shared_species
-        )
-
-        # Feature 3
         mean_distance_to_nearest_neighbors = self._get_mean_distance_to_nearest_neighbors(
             conta_line_species_ab
         )
 
-        # Feature 4
-        mean_distance_to_farthest_neighbors = self._get_mean_distance_to_farthest_neighbors(
-            conta_line_species_ab
-        )
-
-        # Feature 5
-        spearman_corr_all_species = spearmanr(
-            sample_pair_species_ab[:, 0], sample_pair_species_ab[:, 1]
-        )[0]
-
-        # Feature 6
         distances = np.abs(
             conta_line_species_ab[:, 1]
             - conta_line_species_ab[:, 0]
@@ -217,7 +181,7 @@ class ContaminationFeatureExtractor:
         ) / np.sqrt(2)
         mean_distance_to_the_contamination_line = distances.mean()
 
-        # Case where features 9 and 10 cannot be calculated
+        # Case where features cannot be calculated
         if source_specific_species_ab.size == 0:
             diff_mean_ab_top10_source_species_vs_ab_cutoff1 = 0
             diff_mean_ab_top10_source_species_vs_ab_cutoff2 = 0
@@ -230,7 +194,6 @@ class ContaminationFeatureExtractor:
                 )
             )
 
-            # Feature 9
             diff_mean_ab_top10_source_species_vs_ab_cutoff1 = (
                 self._get_diff_mean_ab_top10_source_species_vs_ab_cutoff1(
                     mean_ab_top10_source_specific_species,
@@ -239,7 +202,6 @@ class ContaminationFeatureExtractor:
                 )
             )
 
-            # Feature 10
             diff_mean_ab_top10_source_species_vs_ab_cutoff2 = (
                 self._get_diff_mean_ab_top10_source_species_vs_ab_cutoff2(
                     mean_ab_top10_source_specific_species,
@@ -249,14 +211,10 @@ class ContaminationFeatureExtractor:
 
         return np.array(
             [
-                ratio_species_conta_line_to_shared_species,
-                ratio_species_above_line_to_shared_species,
+                self.ransac.n_trials_,
                 num_species_conta_line,
-                num_species_above_conta_line,
-                spearman_corr_all_species,
                 mean_distance_to_the_contamination_line,
                 mean_distance_to_nearest_neighbors,
-                mean_distance_to_farthest_neighbors,
                 diff_mean_ab_top10_source_species_vs_ab_cutoff1,
                 diff_mean_ab_top10_source_species_vs_ab_cutoff2,
             ]
@@ -324,11 +282,3 @@ class ContaminationFeatureExtractor:
         neighbors_model.fit(data)
         nearest_neighbors_distances, _ = neighbors_model.kneighbors(data)
         return nearest_neighbors_distances.mean().mean()
-
-    def _get_mean_distance_to_farthest_neighbors(self, data, num_neighbors=5):
-        """"""
-        neighbors_model = NearestNeighbors(n_neighbors=data.shape[0])
-        neighbors_model.fit(data)
-        distances, _ = neighbors_model.kneighbors(data)
-        farthest_neighbors_distances = distances[:, -num_neighbors:]
-        return farthest_neighbors_distances.mean().mean()
