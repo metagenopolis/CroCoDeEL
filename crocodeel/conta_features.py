@@ -32,7 +32,7 @@ class _UnitSlopeRegression(RegressorMixin, BaseEstimator):
         return -mean_squared_error(y, self.predict(X), sample_weight=sample_weight)
 
 class ContaminationFeatureExtractor:
-    CONTA_LINE_MIN_NUM_SPECIES: Final[int] = 6
+    CONTA_LINE_MIN_NUM_SPECIES: Final[int] = 8
     UPPER_LEFT_QUADRANT_MAX_NUM_SPECIES: Final[int] = 2
     RANSAC_MAX_TRIALS: Final[int] = 30
     RANSAC_RANDOM_STATE: Final[int] = 42
