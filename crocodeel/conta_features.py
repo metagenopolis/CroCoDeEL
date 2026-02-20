@@ -30,7 +30,7 @@ class _UnitSlopeRegression(RegressorMixin, BaseEstimator):
         return X + self.intercept_
 
     def score(self, X, y):
-        return mean_squared_error(y,self.predict(X))
+        return -mean_squared_error(y,self.predict(X))
 
 class ContaminationFeatureExtractor:
     CONTA_LINE_MIN_NUM_SPECIES: Final[int] = 6
