@@ -50,12 +50,15 @@ class ContaminationFeatureExtractor:
         )
 
     def extract(self, source: str, target: str) -> Optional[ContaminationFeatures]:
+        # Select abundance of all species from the current sample pair
+        sample_pair_species_ab = self.species_ab_table[
+            [target, source]
+        ].to_numpy()
+
         # Step 1: Selection of candidate species for a contamination line
-        (
-            sample_pair_species_ab,
-            conta_line_candidate_species_ab,
-            conta_line_candidate_species_names,
-        ) = self._get_conta_line_candidate_species(source, target)
+        conta_line_candidate_species_ab = self._get_conta_line_candidate_species(
+            sample_pair_species_ab
+        )
 
         # Not enough candidates species for a contamination line
         if conta_line_candidate_species_ab.shape[0] < self.CONTA_LINE_MIN_NUM_SPECIES:
@@ -64,8 +67,8 @@ class ContaminationFeatureExtractor:
         # Step 2: Search for a potential contamination line
         # Use RANSAC regressor to estimate its offset
         try:
-            mask_conta_line_species, conta_line_offset = (
-                self._estimate_conta_line_offset(conta_line_candidate_species_ab)
+            conta_line_species_ab, conta_line_offset = self._estimate_conta_line_offset(
+                conta_line_candidate_species_ab
             )
         except ValueError:
             # RANSAC could not find a valid consensus set
@@ -74,48 +77,33 @@ class ContaminationFeatureExtractor:
 
         # Not enough species in the contamination line
         # no contamination found, exit
-        if np.sum(mask_conta_line_species) < self.CONTA_LINE_MIN_NUM_SPECIES:
+        if conta_line_species_ab.shape[0] < self.CONTA_LINE_MIN_NUM_SPECIES:
             return None
 
-        conta_line_species_names = conta_line_candidate_species_names[
-            mask_conta_line_species
-        ]
-        conta_line_species_ab = conta_line_candidate_species_ab[
-            mask_conta_line_species
-        ]
-
-        # Step 3: Compute features describing the contamination line
+        # Step 3: Compute features describing the potential contamination line
         conta_line_features = self._compute_features(
             sample_pair_species_ab, conta_line_species_ab, conta_line_offset,
+        )
+
+        # Refine contamination line
+        refined_conta_line_species_names = (
+            self._refine_conta_line(sample_pair_species_ab, conta_line_species_ab)
         )
 
         return ContaminationFeatures(
             values=conta_line_features,
             conta_line_offset=conta_line_offset,
-            conta_line_species=conta_line_species_names.tolist(),
-        )
+            conta_line_species = refined_conta_line_species_names)
 
     def _get_conta_line_candidate_species(
-        self, source: str, target: str
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        # Select abundance of all species from the current sample pair
-        sample_pair_species_ab = self.species_ab_table[
-            [target, source]
-        ]
-
+        self, sample_pair_species_ab: np.ndarray
+    ) -> np.ndarray:
         # Select species shared by both samples but more abundant in the source
         mask_upper_triangle = (
-            sample_pair_species_ab[source]
-            >= sample_pair_species_ab[target]
-        ) & (sample_pair_species_ab[target] != -np.inf)
+            sample_pair_species_ab[:, 1] >= sample_pair_species_ab[:, 0]
+        ) & (sample_pair_species_ab[:, 0] != -np.inf)
 
-        upper_triangle_species_ab = sample_pair_species_ab[
-            mask_upper_triangle
-        ].to_numpy()
-        upper_triangle_species_names = sample_pair_species_ab.index.values[
-            mask_upper_triangle
-        ]
-
+        upper_triangle_species_ab = sample_pair_species_ab[mask_upper_triangle, :]
         # Get candidate species for a contamination line
         x = upper_triangle_species_ab[:, 0]  # target
         y = upper_triangle_species_ab[:, 1]  # source
@@ -133,27 +121,63 @@ class ContaminationFeatureExtractor:
         mask_candidate_species = (
             upper_left_quadrant_num_species <= self.UPPER_LEFT_QUADRANT_MAX_NUM_SPECIES
         )
-        candidates_species = upper_triangle_species_ab[mask_candidate_species]
-        candidates_species_names = upper_triangle_species_names[mask_candidate_species]
+        candidates_species_ab = upper_triangle_species_ab[mask_candidate_species]
 
-        return (
-            sample_pair_species_ab.to_numpy(),
-            candidates_species,
-            candidates_species_names,
+        return candidates_species_ab
+
+    def _refine_conta_line(
+        self, sample_pair_species_ab: np.ndarray, conta_line_species_ab: np.ndarray
+    ) -> list[str]:
+        # Select species shared by both samples but more abundant in the source
+        mask_upper_triangle = (
+            sample_pair_species_ab[:, 1] >= sample_pair_species_ab[:, 0]
+        ) & (sample_pair_species_ab[:, 0] != -np.inf)
+
+        conta_line_species_ab_ratio = conta_line_species_ab[:, 1]- conta_line_species_ab[:, 0]
+
+        q1_conta_line_offset = np.quantile(conta_line_species_ab_ratio, 0.25)
+        q3_conta_line_offset = np.quantile(conta_line_species_ab_ratio, 0.75)
+        iqr_conta_line_offset = q3_conta_line_offset - q1_conta_line_offset
+
+        lower_bound_conta_line_offset = max(
+            q1_conta_line_offset - 1.5 * iqr_conta_line_offset,
+            np.min(conta_line_species_ab_ratio),
         )
+
+        upper_bound_conta_line_offset = min(
+            q3_conta_line_offset + 1.5 * iqr_conta_line_offset,
+            np.max(conta_line_species_ab_ratio),
+        )
+
+        upper_triangle_species_ab_ratio = (
+            sample_pair_species_ab[mask_upper_triangle, 1]
+            - sample_pair_species_ab[mask_upper_triangle, 0]
+        )
+
+        mask_refined_conta_line_species = (
+            upper_triangle_species_ab_ratio >= lower_bound_conta_line_offset
+        ) & (upper_triangle_species_ab_ratio <= upper_bound_conta_line_offset)
+
+        refined_conta_line_species_names = self.species_ab_table.index.values[
+            mask_upper_triangle
+        ][mask_refined_conta_line_species].tolist()
+
+        return refined_conta_line_species_names
 
     def _estimate_conta_line_offset(
-        self, conta_line_candidate_species: np.ndarray
+        self, conta_line_candidate_species_ab: np.ndarray
     ) -> tuple[np.ndarray, float]:
         self.ransac.fit(
-            conta_line_candidate_species[:, [0]],  # target
-            conta_line_candidate_species[:, [1]],  # source
+            conta_line_candidate_species_ab[:, [0]],  # target
+            conta_line_candidate_species_ab[:, [1]],  # source
         )
 
-        mask_conta_line_species = self.ransac.inlier_mask_
+        conta_line_species_ab = conta_line_candidate_species_ab[
+            self.ransac.inlier_mask_
+        ]
         conta_line_offset = self.ransac.estimator_.intercept_
 
-        return mask_conta_line_species, conta_line_offset
+        return conta_line_species_ab, conta_line_offset
 
     def _compute_features(
         self,
