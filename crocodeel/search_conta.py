@@ -114,7 +114,7 @@ class ContaminationSearcherWorker:
         return ContaminationEvent(
             source,
             target,
-            rate=np.round(10 ** (-features.conta_line_offset), 4),
+            rate=10 ** (-features.conta_line_offset),
             probability=conta_probability,
             conta_line_species=features.conta_line_species,
         )

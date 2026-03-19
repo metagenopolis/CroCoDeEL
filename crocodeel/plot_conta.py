@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 from crocodeel.conta_event import ContaminationEvent
+from crocodeel.conta_event import round_conta_rate
 
 
 def run_plot_conta(
@@ -141,7 +142,7 @@ class ContaminationPlotsReport:
 
         ax.set_title(
             f"prob = {conta_event.probability}, "
-            f"rate = {round(conta_event.rate * 100, 2)}%"
+            f"rate = {round_conta_rate(100 * conta_event.rate)}%"
         )
 
     def save_to_pdf(self, pdf_fh: BinaryIO) -> None:

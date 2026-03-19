@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 import csv
 from typing import TextIO
 import logging
+import numpy as np
 
 
 @dataclass
@@ -11,6 +12,23 @@ class ContaminationEvent:
     rate: float = field(default=0.0)
     probability: float = field(default=0.0)
     conta_line_species: list[str] = field(default_factory=lambda: [])
+
+
+def round_conta_rate(rate: float, significant_digits: int = 3) -> float:
+    """
+    Rounds a contamination rate to a specific number of significant digits.
+
+    Unlike standard rounding, this adjusts the decimal precision based on
+    the magnitude of the rate to ensure detail is preserved for small values.
+    """
+    if rate == 0:
+        return 0
+
+    magnitude = np.floor(np.log10(rate))
+
+    decimals = int(significant_digits - (magnitude + 1))
+
+    return np.round(rate, decimals)
 
 
 class ContaminationEventIO:
@@ -70,7 +88,7 @@ class ContaminationEventIO:
                     [
                         conta_event.source,
                         conta_event.target,
-                        str(conta_event.rate),
+                        f"{conta_event.rate:.2e}",
                         str(conta_event.probability),
                         ",".join(conta_event.conta_line_species),
                     ]
