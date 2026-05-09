@@ -131,4 +131,4 @@ crocodeel search_conta -s species_ab.tsv -m crocodeel_model.tsv -c conta_events.
 
 ## Citation
 If you find CroCoDeEL useful, please cite:\
-Goulet, L. et al. "CroCoDeEL: accurate control-free detection of cross-sample contamination in metagenomic data" *bioRxiv* (2025). [https://doi.org/10.1101/2025.01.15.633153](https://doi.org/10.1101/2025.01.15.633153).
+Goulet, L. et al. "CroCoDeEL: accurate control-free detection of cross-sample contamination in metagenomic data" *Nat Commun* (2026). [https://doi.org/10.1038/s41467-026-72637-9](https://doi.org/10.1038/s41467-026-72637-9).
