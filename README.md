@@ -1,4 +1,4 @@
-#  CroCoDeEL: Cross-sample Contamination Detection and Estimation of Its Level 🐊
+#  CroCoDeEL: Cross-sample Contamination Detection and Estimation of its Level 🐊
 
 [![install with conda](https://img.shields.io/conda/vn/bioconda/crocodeel?color=green&label=bioconda%2Fcrocodeel&logo=anaconda)](https://anaconda.org/bioconda/crocodeel)
 [![PyPI](https://img.shields.io/pypi/v/crocodeel?label=pypi%20package)](https://pypi.org/project/crocodeel/)
@@ -28,6 +28,8 @@ pip install crocodeel
 ```
 
 Docker and Singularity containers are also available on [BioContainers](https://biocontainers.pro/tools/crocodeel)
+
+For relatively small datasets (< 200 samples), CroCoDeEL can also be run directly from the web interface available at https://metagenopolis.github.io/CroCoDeEL_interpreter/#runCroCoDeEL
 
 ## Installation test
 
@@ -95,10 +97,13 @@ crocodeel easy_wf -s species_abundance.tsv -c contamination_events.tsv -r contam
 ```
 
 ### Results interpretation
-CroCoDeEL will probably report false contamination events for samples with similar species abundances profiles (e.g. longitudinal data, animals raised together).\
-For non-related samples, CroCoDeEL may occasionally generate false positives that can be filtered out by a human-expert.\
-Thus, we strongly recommend inspecting scatterplots of each contamination event to discard potential false positives.\
-Please check the [wiki](https://github.com/metagenopolis/CroCoDeEL/wiki) for more information.
+
+CroCoDeEL is a decision-support tool and **should not be considered a definitive contamination classification system**.
+It may report false-positive contamination events, particularly for samples withs similar species abundance profiles (e.g. longitudinal samples).
+
+Therefore, we strongly recommend carefully reviewing the scatterplots associated with each predicted contamination event in order to identify and discard potential false positives.
+
+To facilitate this interpretation step, we recommend using the [CroCoDeEL Interpretation Interface](https://metagenopolis.github.io/CroCoDeEL_interpreter/), which provides an interactive environment for exploring and validating CroCoDeEL results.
 
 ### Reproduce results of the paper
 Species abundance tables of the training, validation and test datasets are available in this [repository](https://doi.org/10.57745/N6JSHQ).  
@@ -131,4 +136,4 @@ crocodeel search_conta -s species_ab.tsv -m crocodeel_model.tsv -c conta_events.
 
 ## Citation
 If you find CroCoDeEL useful, please cite:\
-Goulet, L. et al. "CroCoDeEL: accurate control-free detection of cross-sample contamination in metagenomic data" *Nat Commun* (2026). [https://doi.org/10.1038/s41467-026-72637-9](https://doi.org/10.1038/s41467-026-72637-9).
+Goulet, L. et al. "CroCoDeEL: accurate control-free detection of cross-sample contamination in metagenomic data" *Nature Communications* (2026). [https://doi.org/10.1038/s41467-026-72637-9](https://doi.org/10.1038/s41467-026-72637-9).
