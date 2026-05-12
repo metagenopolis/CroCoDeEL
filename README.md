@@ -16,13 +16,13 @@ CroCoDeEL relies only on species abundance tables and does not need negative con
 
 ## Installation
 
-CroCoDeEL is available on bioconda:
+CroCoDeEL is available on [bioconda](https://anaconda.org/channels/bioconda/packages/crocodeel/overview):
 ```
 conda create --name crocodeel_env -c conda-forge -c bioconda crocodeel
 conda activate crocodeel_env
 ```
 
-Alternatively, you can use pip with Python ≥ 3.12:
+Alternatively, you can use [pip](https://pypi.org/project/crocodeel/) with Python ≥ 3.12:
 ```
 pip install crocodeel
 ```
@@ -55,10 +55,21 @@ An example is available [here](crocodeel/test_data/mgs_profiles_test.tsv).
 CroCoDeEL works with relative abundances.
 The table will automatically be normalized so the abundance of each column equals 1.
 
-**Important**: CroCoDeEL requires accurate estimation of the abundance of subdominant species.\
-We strongly recommend using [the Meteor software suite](https://github.com/metagenopolis/meteor) to generate the species abundance table.\
-Alternatively, MetaPhlan4 can be used (parameter: --tax\_level t), although it will fail to detect low-level contaminations.\
-We advise against using other taxonomic profilers that, according to our benchmarks, do not meet this requirement.
+**Important:** CroCoDeEL relies on accurate estimation of low-abundance (subdominant) species.\
+We therefore strongly recommend using [Meteor](https://github.com/metagenopolis/meteor) to generate the species abundance table.
+
+Alternatively, [MetaPhlAn4](https://github.com/biobakery/metaphlan) or [sylph](https://github.com/bluenote-1577/sylph) can also be used,
+although their lower sensitivity for low-abundance species may reduce the detection of low-level contamination events.\
+Based on our benchmarks, we do not recommend using other taxonomic profilers, as they generally do not provide sufficiently accurate abundance estimates for subdominant species.
+
+#### Using MetaPhlAn4
+When using MetaPhlAn4, profiling should be performed at the SGB level using the option `--tax_level t`.\
+Alternatively, you can manually filter the abundance table to retain only SGB-level entries.\
+CroCoDeEL should then be run with the `--filter-low-ab` parameter, as described below.
+
+#### Using sylph
+For sylph, we recommend using [GTDB representative genomes](https://gtdb.ecogenomic.org/) as the reference database and generating an MPA-style abundance table with [sylph-tax](https://github.com/bluenote-1577/sylph-tax).\
+The resulting abundance table should then be filtered to retain only species-level entries corresponding to the `t__` taxonomic rank.
 
 ### Search for contamination
 Run the following command to identify cross-sample contamination:
