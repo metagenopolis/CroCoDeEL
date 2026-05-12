@@ -99,11 +99,12 @@ crocodeel easy_wf -s species_abundance.tsv -c contamination_events.tsv -r contam
 ### Results interpretation
 
 CroCoDeEL is a decision-support tool and **should not be considered a definitive contamination classification system**.
-It may report false-positive contamination events, particularly for samples withs similar species abundance profiles (e.g. longitudinal samples).
+It may report false-positive contamination events, particularly for samples with similar species abundance profiles (e.g. longitudinal samples).
 
-Therefore, we strongly recommend carefully reviewing the scatterplots associated with each predicted contamination event in order to identify and discard potential false positives.
+For this reason, we strongly recommend manually reviewing the scatterplots associated with each predicted contamination event to identify and discard potential false positives.\
+To learn how to interpret these scatterplots, please refer to this [tutorial](https://metagenopolis.github.io/CroCoDeEL_interpreter/#learn).
 
-To facilitate this interpretation step, we recommend using the [CroCoDeEL Interpretation Interface](https://metagenopolis.github.io/CroCoDeEL_interpreter/), which provides an interactive environment for exploring and validating CroCoDeEL results.
+For a more efficient review workflow, we also recommend using the [CroCoDeEL Interpretation Interface](https://metagenopolis.github.io/CroCoDeEL_interpreter/), which provides an interactive environment for exploring and validating CroCoDeEL results.
 
 ### Reproduce results of the paper
 Species abundance tables of the training, validation and test datasets are available in this [repository](https://doi.org/10.57745/N6JSHQ).  
