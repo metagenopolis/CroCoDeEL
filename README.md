@@ -6,9 +6,15 @@
 
 ## Introduction
 
+### What is CroCoDeEL?
 CroCoDeEL is a tool that detects cross-sample contamination (aka well-to-well leakage) in shotgun metagenomic data.\
 It accurately identifies contaminated samples but also pinpoints contamination sources and estimates contamination rates.\
 CroCoDeEL relies only on species abundance tables and does not need negative controls nor sample position during processing (i.e. plate maps).
+
+### What CroCoDeEL is not
+- CroCoDeEL is not designed to detect external or reagent contamination, as addressed by tools such as [decontam](https://doi.org/10.1186/s40168-018-0605-2) or [SCRuB](https://doi.org/10.1038/s41587-023-01696-w).
+- CroCoDeEL detects and quantifies cross-contamination, but it does not yet provide a decontamination module.
+- CroCoDeEL was developed for complex microbial communities and is not intended for isolate genomics or low-complexity microbial communities.
 
 <p align="center">
   <img src="docs/logos/logo.webp" width="350" height="350" alt="logo">
