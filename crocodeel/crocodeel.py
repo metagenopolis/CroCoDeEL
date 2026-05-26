@@ -434,7 +434,8 @@ def main() -> None:
 
         logging.warning(
             "Reported contamination events may include false positives, particularly "
-            "for samples with species abundance profiles (e.g. longitudinal samples)."
+            "for samples with similar species abundance profiles "
+            "(e.g. longitudinal samples)."
         )
 
         logging.warning(
