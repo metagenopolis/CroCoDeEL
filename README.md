@@ -69,8 +69,8 @@ although their lower sensitivity for low-abundance species may reduce the detect
 Based on our benchmarks, we do not recommend using other taxonomic profilers, as they generally do not provide sufficiently accurate abundance estimates for subdominant species.
 
 #### Using MetaPhlAn4
-When using MetaPhlAn4, profiling should be performed at the SGB level using the option `--tax_level t`.\
-Alternatively, you can manually filter the abundance table to retain only SGB-level entries.\
+When using MetaPhlAn4, profiling should be performed at the SGB level using the option `--tax_lev t`.\
+Alternatively, if you already have a MetaPhlAn abundance table, filter the `clade_name` column to retain only rows containing `t__SGB`.\
 CroCoDeEL should then be run with the `--filter-low-ab` parameter, as described below.
 
 #### Using sylph
