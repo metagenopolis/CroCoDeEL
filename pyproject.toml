@@ -46,6 +46,9 @@ types-tqdm = "^4.67"
 [tool.poetry.group.pylint.dependencies]
 pylint = "^4.0"
 
+[tool.poetry.group.test.dependencies]
+pytest = "^9.1.1"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
