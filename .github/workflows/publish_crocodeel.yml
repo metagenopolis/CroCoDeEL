@@ -1,24 +1,34 @@
-name: Publish crocodeel
+name: Publish to PyPI
 
 on:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
   pypi:
-    permissions:
-      contents: read
+    name: Publish package to PyPI
     runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+
+    environment:
+      name: pypi
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Python
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - name: Install poetry
+          python-version: "3.12"
+
+      - name: Install Poetry
         uses: abatilo/actions-poetry@v4
-      - name: Build and publish to PyPI
-        run: |
-          poetry config http-basic.pypi __token__ ${{ secrets.PYPI_TOKEN }}
-          poetry build
-          poetry publish --skip-existing
+
+      - name: Build package
+        run: poetry build
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
