@@ -85,10 +85,21 @@ def read(fh: TextIO) -> pd.DataFrame:
 
 def normalize(species_ab_table: pd.DataFrame) -> pd.DataFrame:
     """Normalize species abundances to relative abundances."""
-    # Normalize to relative abundance
     species_ab_table = species_ab_table.div(species_ab_table.sum(axis=0), axis=1)
 
     logging.info("Species abundance table normalized")
+    return species_ab_table
+
+
+def log_transform(species_ab_table: pd.DataFrame) -> pd.DataFrame:
+    """Apply a log10 transformation to species abundances.
+
+    Zeros are intentionally converted to -inf.
+    """
+    with np.errstate(divide="ignore"):
+        species_ab_table = np.log10(species_ab_table)
+
+    logging.info("Species abundance table log-transformed")
     return species_ab_table
 
 
@@ -119,5 +130,6 @@ def read_filter_normalize(
         _check_non_empty_samples(species_ab_table)
 
     species_ab_table = normalize(species_ab_table)
+    species_ab_table = log_transform(species_ab_table)
 
     return species_ab_table
