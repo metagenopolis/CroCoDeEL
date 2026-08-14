@@ -7,6 +7,7 @@ from sklearn.base import RegressorMixin, BaseEstimator
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import NearestNeighbors
 
+
 @dataclass
 class ContaminationFeatures:
     NUM_FEATURES: ClassVar[int] = 6
@@ -14,6 +15,7 @@ class ContaminationFeatures:
     values: np.ndarray
     conta_line_offset: float
     conta_line_species: list[str]
+
 
 class _UnitSlopeRegression(RegressorMixin, BaseEstimator):
     def __init__(self):
@@ -30,6 +32,7 @@ class _UnitSlopeRegression(RegressorMixin, BaseEstimator):
 
     def score(self, X, y, sample_weight=None):
         return -mean_squared_error(y, self.predict(X), sample_weight=sample_weight)
+
 
 class ContaminationFeatureExtractor:
     CONTA_LINE_MIN_NUM_SPECIES: Final[int] = 8
@@ -51,9 +54,7 @@ class ContaminationFeatureExtractor:
 
     def extract(self, source: str, target: str) -> Optional[ContaminationFeatures]:
         # Select abundance of all species from the current sample pair
-        sample_pair_species_ab = self.species_ab_table[
-            [target, source]
-        ].to_numpy()
+        sample_pair_species_ab = self.species_ab_table[[target, source]].to_numpy()
 
         # Step 1: Selection of candidate species for a contamination line
         conta_line_candidate_species_ab = self._get_conta_line_candidate_species(
@@ -82,18 +83,21 @@ class ContaminationFeatureExtractor:
 
         # Step 3: Compute features describing the potential contamination line
         conta_line_features = self._compute_features(
-            sample_pair_species_ab, conta_line_species_ab, conta_line_offset,
+            sample_pair_species_ab,
+            conta_line_species_ab,
+            conta_line_offset,
         )
 
         # Refine contamination line
-        refined_conta_line_species_names = (
-            self._refine_conta_line(sample_pair_species_ab, conta_line_species_ab)
+        refined_conta_line_species_names = self._refine_conta_line(
+            sample_pair_species_ab, conta_line_species_ab
         )
 
         return ContaminationFeatures(
             values=conta_line_features,
             conta_line_offset=conta_line_offset,
-            conta_line_species = refined_conta_line_species_names)
+            conta_line_species=refined_conta_line_species_names,
+        )
 
     def _get_conta_line_candidate_species(
         self, sample_pair_species_ab: np.ndarray
@@ -148,7 +152,9 @@ class ContaminationFeatureExtractor:
             sample_pair_species_ab[:, 1] >= sample_pair_species_ab[:, 0]
         ) & (sample_pair_species_ab[:, 0] != -np.inf)
 
-        conta_line_species_ab_ratio = conta_line_species_ab[:, 1]- conta_line_species_ab[:, 0]
+        conta_line_species_ab_ratio = (
+            conta_line_species_ab[:, 1] - conta_line_species_ab[:, 0]
+        )
 
         q1_conta_line_offset = np.quantile(conta_line_species_ab_ratio, 0.25)
         q3_conta_line_offset = np.quantile(conta_line_species_ab_ratio, 0.75)
@@ -182,6 +188,12 @@ class ContaminationFeatureExtractor:
     def _estimate_conta_line_offset(
         self, conta_line_candidate_species_ab: np.ndarray
     ) -> tuple[np.ndarray, float]:
+        """Estimate the offset of the contamination line using RANSAC.
+
+        The contamination line is constrained to have a slope of one in
+        log10 abundance space. RANSAC is used to identify species that
+        belong to the line and to estimate its offset.
+        """
         self.ransac.fit(
             conta_line_candidate_species_ab[:, [0]],  # target
             conta_line_candidate_species_ab[:, [1]],  # source
@@ -209,8 +221,8 @@ class ContaminationFeatureExtractor:
 
         num_species_conta_line = conta_line_species_ab.shape[0]
 
-        mean_distance_to_nearest_neighbors = self._get_mean_distance_to_nearest_neighbors(
-            conta_line_species_ab
+        mean_distance_to_nearest_neighbors = (
+            self._get_mean_distance_to_nearest_neighbors(conta_line_species_ab)
         )
 
         distances = np.abs(
@@ -280,7 +292,7 @@ class ContaminationFeatureExtractor:
         self,
         mean_ab_top10_source_specific_species,
         sample_pair_species_ab,
-        conta_line_offset
+        conta_line_offset,
     ):
         # Define a pseudo zero
         min_non_zero = np.min(
