@@ -13,6 +13,7 @@ from crocodeel.ab_table_utils import (
     log_transform,
     read,
     read_filter_normalize,
+    compare_species_names,
 )
 
 
@@ -338,3 +339,50 @@ def test_read_filter_normalize_rejects_samples_emptied_by_filtering():
             table,
             filtering_ab_thr_factor=20,
         )
+
+
+def test_compare_species_names_identical(caplog):
+    """Test that no warning is logged when species names are identical."""
+    table_1 = pd.DataFrame(
+        {"sample1": [0.1, 0.9]},
+        index=["species_1", "species_2"],
+    )
+    table_2 = pd.DataFrame(
+        {"sample2": [0.2, 0.8]},
+        index=["species_1", "species_2"],
+    )
+
+    with caplog.at_level(logging.WARNING):
+        compare_species_names(table_1, table_2)
+
+    assert not caplog.records
+
+
+def test_compare_species_names_different(caplog):
+    """Test that warnings are logged when species names differ."""
+    table_1 = pd.DataFrame(
+        {"sample1": [0.1, 0.9, 0.2]},
+        index=["species_1", "species_2", "species_3"],
+    )
+    table_2 = pd.DataFrame(
+        {"sample2": [0.2, 0.8, 0.3]},
+        index=["species_1", "species_2", "species_4"],
+    )
+
+    with caplog.at_level(logging.WARNING):
+        compare_species_names(table_1, table_2)
+
+    assert len(caplog.records) == 3
+
+    assert (
+        "Abundance tables have only 2 species names in common"
+        in caplog.text
+    )
+    assert (
+        "Make sure the abundance tables were generated with the same tool "
+        "and database"
+    ) in caplog.text
+    assert (
+        "Missing abundance values will be filled with zeros for non-shared species"
+        in caplog.text
+    )
