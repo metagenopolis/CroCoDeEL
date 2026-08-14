@@ -276,7 +276,12 @@ class ContaminationFeatureExtractor:
         source_specific_species_ab,
         num_species=10,
     ):
-        """"""
+        """Calculate the mean abundance of the most abundant source-specific species.
+
+        If fewer than or equal to ``num_species`` source-specific species are
+        available, the mean abundance of all species is returned. Otherwise,
+        the mean abundance of the ``num_species`` most abundant species in the
+        source sample is returned."""
         assert source_specific_species_ab.size != 0
 
         # Abundance of source specific species in the source

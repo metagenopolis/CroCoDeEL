@@ -307,3 +307,130 @@ def test_refine_conta_line_removes_high_offset_outlier(feature_extractor):
     ]
 
     assert result == expected
+
+
+def test_get_mean_ab_top_source_specific_species_with_fewer_than_10_species(
+    feature_extractor,
+):
+    """Test mean abundance when fewer than 10 species are available."""
+    source_specific_species_ab = np.array(
+        [
+            [-6.0, -3.0],
+            [-5.0, -4.0],
+            [-4.0, -2.0],
+            [-3.0, -5.0],
+        ]
+    )
+
+    result = feature_extractor._get_mean_ab_top_source_specific_species(
+        source_specific_species_ab
+    )
+
+    # Fewer than 10 species are available, so all source abundances
+    # are included in the mean.
+    expected = np.mean([-3.0, -4.0, -2.0, -5.0])
+
+    assert result == pytest.approx(expected)
+
+
+def test_get_mean_ab_top_source_specific_species_with_more_than_10_species(
+    feature_extractor,
+):
+    """Test mean abundance of the 10 most abundant species."""
+    source_abundances = np.array(
+        [
+            -6.0,
+            -5.5,
+            -5.0,
+            -4.5,
+            -4.0,
+            -3.5,
+            -3.0,
+            -2.5,
+            -2.0,
+            -1.5,
+            -1.0,
+            -0.5,
+        ]
+    )
+
+    source_specific_species_ab = np.column_stack(
+        [
+            np.full(len(source_abundances), -np.inf),
+            source_abundances,
+        ]
+    )
+
+    result = feature_extractor._get_mean_ab_top_source_specific_species(
+        source_specific_species_ab
+    )
+
+    # Only the 10 most abundant species are included.
+    # In log10 space, the highest abundances are the least negative values:
+    # -0.5, -1.0, ..., -5.0.
+    expected = np.mean(
+        [
+            -0.5,
+            -1.0,
+            -1.5,
+            -2.0,
+            -2.5,
+            -3.0,
+            -3.5,
+            -4.0,
+            -4.5,
+            -5.0,
+        ]
+    )
+
+    assert result == pytest.approx(expected)
+
+
+def test_get_mean_ab_top_source_specific_species_custom_num_species(
+    feature_extractor,
+):
+    """Test selecting a custom number of most abundant species."""
+    source_specific_species_ab = np.array(
+        [
+            [-np.inf, -5.0],
+            [-np.inf, -3.0],
+            [-np.inf, -1.0],
+            [-np.inf, -2.0],
+            [-np.inf, -4.0],
+        ]
+    )
+
+    result = feature_extractor._get_mean_ab_top_source_specific_species(
+        source_specific_species_ab,
+        num_species=2,
+    )
+
+    # The two most abundant species are -1.0 and -2.0.
+    expected = np.mean([-1.0, -2.0])
+
+    assert result == pytest.approx(expected)
+
+
+def test_get_mean_ab_top_source_specific_species_with_exactly_10_species(
+    feature_extractor,
+):
+    """Test mean abundance when exactly 10 species are available."""
+    source_abundances = np.array(
+        [-5.0, -4.5, -4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5]
+    )
+
+    source_specific_species_ab = np.column_stack(
+        [
+            np.full(len(source_abundances), -np.inf),
+            source_abundances,
+        ]
+    )
+
+    result = feature_extractor._get_mean_ab_top_source_specific_species(
+        source_specific_species_ab
+    )
+
+    # Exactly 10 species are available, so all 10 are included.
+    expected = source_abundances.mean()
+
+    assert result == pytest.approx(expected)
