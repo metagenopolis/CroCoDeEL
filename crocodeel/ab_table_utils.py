@@ -133,3 +133,24 @@ def read_filter_normalize(
     species_ab_table = log_transform(species_ab_table)
 
     return species_ab_table
+
+
+def compare_species_names(species_ab_table: pd.DataFrame, species_ab_table_2: pd.DataFrame) -> None:
+    """Compare species names between two abundance tables.
+    
+    Logs warnings when the tables do not contain the same set of species.
+    """
+    species_names = set(species_ab_table.index)
+    species_names_2 = set(species_ab_table_2.index)
+
+    if species_names != species_names_2:
+        logging.warning(
+            "Abundance tables have only %d species names in common",
+            len(species_names.intersection(species_names_2)),
+        )
+        logging.warning(
+            "Make sure the abundance tables were generated with the same tool and database"
+        )
+        logging.warning(
+            "Missing abundance values will be filled with zeros for non-shared species"
+        )
