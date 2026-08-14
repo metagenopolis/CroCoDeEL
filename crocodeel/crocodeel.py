@@ -7,6 +7,7 @@ import logging
 import multiprocessing
 from pathlib import Path
 import os
+import math
 from importlib.metadata import version
 from crocodeel.execution_description import ExecutionDescription
 from crocodeel import ab_table_utils
@@ -79,6 +80,19 @@ def bounded_float_01(value: str) -> float:
 
     if not 0.0 <= fvalue <= 1.0:
         raise argparse.ArgumentTypeError("value must be a float between 0 and 1")
+
+    return fvalue
+
+
+def positive_float(value: str) -> float:
+    """Validate a strictly positive floating-point value."""
+    try:
+        fvalue = float(value)
+    except ValueError as value_err:
+        raise argparse.ArgumentTypeError(f"{value} is not a number") from value_err
+
+    if not math.isfinite(fvalue) or fvalue <= 0:
+        raise argparse.ArgumentTypeError("value must be a finite number greater than 0")
 
     return fvalue
 
@@ -158,7 +172,7 @@ def get_arguments() -> argparse.Namespace:
         cur_parser.add_argument(
             "--filter-low-ab",
             dest="filtering_ab_thr_factor",
-            type=float,
+            type=positive_float,
             required=False,
             default=None,
             metavar="AB_THRESHOLD_FACTOR",
