@@ -1,5 +1,4 @@
-#!/bin/env python3
-# -*- coding: utf-8 -*-
+"""Command-line interface for CroCoDeEL."""
 
 import sys
 import argparse
@@ -19,11 +18,13 @@ from crocodeel.test_install import TestInstall
 
 
 def set_logging() -> None:
+    """Configure logging for the command-line application."""
     logging.basicConfig(
         format="%(asctime)s :: %(levelname)s :: %(message)s", level=logging.INFO
     )
 
 def readable_file(fp_str: str) -> Path:
+    """Validate that a path points to a readable regular file."""
     fp = Path(fp_str).resolve()
 
     if not fp.exists():
@@ -37,6 +38,7 @@ def readable_file(fp_str: str) -> Path:
 
 
 def writable_file(fp_str: str) -> Path:
+    """Validate that a path can be used as an output file."""
     fp = Path(fp_str).resolve()
 
     if fp.exists():
@@ -57,6 +59,7 @@ def writable_file(fp_str: str) -> Path:
     return fp
 
 def nproc(value: str) -> int:
+    """Validate the number of requested parallel processes."""
     max_nproc = multiprocessing.cpu_count()
 
     try:
@@ -73,6 +76,7 @@ def nproc(value: str) -> int:
 
 
 def bounded_float_01(value: str) -> float:
+    """Parse a string as a float and ensure its value is between 0 and 1."""
     try:
         fvalue = float(value)
     except ValueError as value_err:
@@ -98,6 +102,7 @@ def positive_float(value: str) -> float:
 
 
 def get_arguments() -> argparse.Namespace:
+    """Parse and validate command-line arguments."""
     prog_name = "CroCoDeEL"
     prog_version = version(prog_name.lower())
     parser = argparse.ArgumentParser(
@@ -361,6 +366,7 @@ def get_arguments() -> argparse.Namespace:
     return parser.parse_args(args=sys.argv[1:] or ["--help"])
 
 
+# pylint: disable=missing-function-docstring
 def main() -> None:
     set_logging()
     args = get_arguments()
