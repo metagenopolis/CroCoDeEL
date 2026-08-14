@@ -82,8 +82,8 @@ def bounded_float_01(value: str) -> float:
     except ValueError as value_err:
         raise argparse.ArgumentTypeError(f"{value} is not a valid float") from value_err
 
-    if not 0.0 <= fvalue <= 1.0:
-        raise argparse.ArgumentTypeError("value must be a float between 0 and 1")
+    if not math.isfinite(fvalue) or not 0.0 <= fvalue <= 1.0:
+        raise argparse.ArgumentTypeError("value must be a finite float between 0 and 1")
 
     return fvalue
 
