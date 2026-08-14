@@ -11,8 +11,14 @@ from crocodeel.conta_features import (
 def feature_extractor():
     """Create a ContaminationFeatureExtractor for testing."""
     species_ab_table = pd.DataFrame(
-        {"sample1": [1.0]},
-        index=["species_1"],
+        {"sample1": [0.1, 0.01, 0.001, 0.0001, 0.00001]},
+        index=[
+            "species_1",
+            "species_2",
+            "species_3",
+            "species_4",
+            "species_5",
+        ],
     )
 
     return ContaminationFeatureExtractor(species_ab_table)
@@ -207,3 +213,97 @@ def test_estimate_conta_line_offset_rejects_outlier(feature_extractor):
     )
 
     np.testing.assert_array_equal(result_species_ab, expected_species_ab)
+
+
+def test_refine_conta_line_keeps_species_within_iqr(feature_extractor):
+    """Test that species within the IQR bounds are retained."""
+    sample_pair_species_ab = np.array(
+        [
+            [-6.0, -4.0],
+            [-5.0, -3.1],
+            [-4.0, -2.0],
+            [-3.0, -1.1],
+            [-2.0, 0.0],
+        ]
+    )
+
+    conta_line_species_ab = sample_pair_species_ab.copy()
+
+    result = feature_extractor._refine_conta_line(
+        sample_pair_species_ab,
+        conta_line_species_ab,
+    )
+
+    # All source-target offsets are between 1.9 and 2.0,
+    # so all species are retained.
+    expected = [
+        "species_1",
+        "species_2",
+        "species_3",
+        "species_4",
+        "species_5",
+    ]
+
+    assert result == expected
+
+
+def test_refine_conta_line_removes_low_offset_outlier(feature_extractor):
+    """Test that a species below the lower IQR bound is removed."""
+    sample_pair_species_ab = np.array(
+        [
+            [-6.0, -4.0],  # offset = 2.0
+            [-5.0, -3.1],  # offset = 1.9
+            [-4.0, -2.0],  # offset = 2.0
+            [-3.0, -1.1],  # offset = 1.9
+            [-2.0, -3.0],  # offset = -1.0 -> low outlier
+        ]
+    )
+
+    conta_line_species_ab = sample_pair_species_ab[:4]
+
+    result = feature_extractor._refine_conta_line(
+        sample_pair_species_ab,
+        conta_line_species_ab,
+    )
+
+    # The last species has an offset of -1.0, which is below the
+    # lower IQR bound of the contamination-line offsets.
+    expected = [
+        "species_1",
+        "species_2",
+        "species_3",
+        "species_4",
+    ]
+
+    assert result == expected
+
+
+def test_refine_conta_line_removes_high_offset_outlier(feature_extractor):
+    """Test that a species above the upper IQR bound is removed."""
+    sample_pair_species_ab = np.array(
+        [
+            [-6.0, -4.0],  # offset = 2.0
+            [-5.0, -3.1],  # offset = 1.9
+            [-4.0, -2.0],  # offset = 2.0
+            [-3.0, -1.1],  # offset = 1.9
+            [-2.0, 1.0],  # offset = 3.0 -> high outlier
+        ]
+    )
+
+    conta_line_species_ab = sample_pair_species_ab[:4]
+
+    result = feature_extractor._refine_conta_line(
+        sample_pair_species_ab,
+        conta_line_species_ab,
+    )
+
+    # The last species has an offset of 3.0, which is above the
+    # upper IQR bound of the contamination-line offsets.
+    expected = [
+        "species_1",
+        "species_2",
+        "species_3",
+        "species_4",
+    ]
+
+    assert result == expected
