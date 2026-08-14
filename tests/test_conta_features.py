@@ -4,8 +4,60 @@ import pytest
 
 from crocodeel.conta_features import (
     ContaminationFeatureExtractor,
+    _UnitSlopeRegression
 )
 
+def test_unit_slope_regression_fit():
+    """Test fitting a unit-slope regression on log-transformed abundances."""
+    model = _UnitSlopeRegression()
+
+    X = np.array([[-6.0], [-5.0], [-4.0]])
+    y = np.array([[-4.0], [-3.0], [-2.0]])
+
+    result = model.fit(X, y)
+
+    # The data follow y = x + 2, so the fitted slope is 1
+    # and the contamination-line offset is 2.
+    assert result is model
+    assert model.coef_ == 1
+    assert model.intercept_ == pytest.approx(2.0)
+
+
+def test_unit_slope_regression_predict():
+    """Test predictions on log-transformed abundances."""
+    model = _UnitSlopeRegression()
+
+    X = np.array([[-6.0], [-5.0], [-4.0]])
+    y = np.array([[-4.0], [-3.0], [-2.0]])
+
+    model.fit(X, y)
+
+    result = model.predict(np.array([[-3.0], [-2.0]]))
+
+    # The fitted contamination line is y = x + 2.
+    expected = np.array([[-1.0], [0.0]])
+
+    np.testing.assert_array_equal(result, expected)
+
+
+def test_unit_slope_regression_score():
+    """Test the negative mean squared error score on log-transformed abundances."""
+    model = _UnitSlopeRegression()
+
+    X_train = np.array([[-6.0], [-5.0], [-4.0]])
+    y_train = np.array([[-4.0], [-3.0], [-2.0]])
+
+    model.fit(X_train, y_train)
+
+    X = np.array([[-3.0], [-2.0]])
+    y = np.array([[-1.0], [0.5]])
+
+    # Predictions are [-1.0, 0.0].
+    # MSE = ((-1 - -1)^2 + (0 - 0.5)^2) / 2 = 0.125.
+    # score() returns the negative MSE.
+    result = model.score(X, y)
+
+    assert result == pytest.approx(-0.125)
 
 @pytest.fixture
 def feature_extractor():

@@ -18,19 +18,33 @@ class ContaminationFeatures:
 
 
 class _UnitSlopeRegression(RegressorMixin, BaseEstimator):
+    """Linear regression constrained to a unit slope.
+
+    This estimator fits a regression line of the form ``y = x + b``,
+    where the slope is fixed to one and only the intercept is estimated.
+    """
+
     def __init__(self):
+        """Initialize the regression coefficients."""
         self.coef_ = None
         self.intercept_ = None
 
     def fit(self, X, y):
+        """Fit the regression by estimating the intercept."""
         self.coef_ = 1
         self.intercept_ = np.mean(y - X)
         return self
 
     def predict(self, X):
+        """Predict values using the fitted unit-slope regression."""
         return X + self.intercept_
 
     def score(self, X, y, sample_weight=None):
+        """Calculate the negative mean squared error of predictions.
+
+        The negative value follows the scikit-learn convention that higher
+        scores indicate better model performance.
+        """
         return -mean_squared_error(y, self.predict(X), sample_weight=sample_weight)
 
 
