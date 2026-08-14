@@ -4,12 +4,12 @@ on:
   push:
   pull_request:
 
-permissions:
-	  contents: read
-
 jobs:
   pytest:
     runs-on: ubuntu-22.04
+
+    permissions:
+    contents: read
 
     strategy:
       matrix:
