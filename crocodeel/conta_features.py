@@ -98,29 +98,44 @@ class ContaminationFeatureExtractor:
     def _get_conta_line_candidate_species(
         self, sample_pair_species_ab: np.ndarray
     ) -> np.ndarray:
-        # Select species shared by both samples but more abundant in the source
+        """Select candidate species for a contamination line."""
+
+        # Keep species that are present in both samples and at least as abundant
+        # in the source sample as in the target sample.
         mask_upper_triangle = (
             sample_pair_species_ab[:, 1] >= sample_pair_species_ab[:, 0]
         ) & (sample_pair_species_ab[:, 0] != -np.inf)
 
         upper_triangle_species_ab = sample_pair_species_ab[mask_upper_triangle, :]
-        # Get candidate species for a contamination line
-        x = upper_triangle_species_ab[:, 0]  # target
-        y = upper_triangle_species_ab[:, 1]  # source
 
-        # Broadcasting: Compare every element to every other element
-        # Shapes: (N, 1) vs (1, N) -> Result (N, N) matrices
-        is_left = x[:, np.newaxis] <= x[np.newaxis, :]   # j is to the left of i
-        is_upper = y[:, np.newaxis] >= y[np.newaxis, :]  # j is above i
+        # Coordinates in the target-vs-source abundance plot:
+        # x = target abundance and y = source abundance.
+        x = upper_triangle_species_ab[:, 0]
+        y = upper_triangle_species_ab[:, 1]
 
-        # Sum columns to get count for each species i
-        # Subtract 1 because a species is always in its own upper-left quadrant
+        # Compare every species i with every species j.
+        # Rows correspond to species i and columns to species j.
+        #
+        # For each species j:
+        #   x[i] <= x[j] -> species i is to the left of species j
+        #   y[i] >= y[j] -> species i is above species j
+        #
+        # Therefore, is_left & is_upper identifies species i located
+        # in the upper-left quadrant of species j.
+        is_left = x[:, np.newaxis] <= x[np.newaxis, :]
+        is_upper = y[:, np.newaxis] >= y[np.newaxis, :]
+
+        # Count the number of species i in the upper-left quadrant of each
+        # species j. Species j is always counted as its own neighbor, so
+        # subtract one from each count.
         upper_left_quadrant_num_species = np.sum(is_left & is_upper, axis=0) - 1
 
-        # Filter candidates
+        # Keep species with at most the allowed number of species
+        # in their upper-left quadrant.
         mask_candidate_species = (
             upper_left_quadrant_num_species <= self.UPPER_LEFT_QUADRANT_MAX_NUM_SPECIES
         )
+
         candidates_species_ab = upper_triangle_species_ab[mask_candidate_species]
 
         return candidates_species_ab
