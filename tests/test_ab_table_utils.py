@@ -45,10 +45,7 @@ def test_read():
 def test_read_accepts_comments():
     """Test that comment lines are ignored."""
     table = io.StringIO(
-        "# Comment\n"
-        "species_name\tsample1\n"
-        "species_1\t0.1\n"
-        "species_2\t0.9\n"
+        "# Comment\n" "species_name\tsample1\n" "species_1\t0.1\n" "species_2\t0.9\n"
     )
     table.name = "species_abundance.tsv"
 
@@ -74,11 +71,7 @@ def test_read_logs_table_dimensions(caplog):
 
 def test_read_filter_normalize_converts_integer_species_names_to_strings():
     """Test that integer species names are converted to strings."""
-    table = io.StringIO(
-        "species_name\tsample1\n"
-        "123\t0.1\n"
-        "456\t0.9\n"
-    )
+    table = io.StringIO("species_name\tsample1\n" "123\t0.1\n" "456\t0.9\n")
     table.name = "species_abundance.tsv"
 
     result = read_filter_normalize(table)
@@ -89,11 +82,7 @@ def test_read_filter_normalize_converts_integer_species_names_to_strings():
 
 def test_read_filter_normalize_rejects_invalid_species_names():
     """Test that non-string and non-integer species names are rejected."""
-    table = io.StringIO(
-        "species_name\tsample1\n"
-        "0.5\t0.1\n"
-        "0.6\t0.9\n"
-    )
+    table = io.StringIO("species_name\tsample1\n" "0.5\t0.1\n" "0.6\t0.9\n")
     table.name = "species_abundance.tsv"
 
     with pytest.raises(SystemExit):
@@ -219,6 +208,7 @@ def test_filter_low_ab_removes_species_at_threshold():
     assert result.loc["species_2", "sample1"] == 0.0
     assert result.loc["species_3", "sample1"] == 0.03
 
+
 def test_log_transform():
     """Test log10 transformation of species abundances."""
     table = pd.DataFrame(
@@ -265,11 +255,7 @@ def test_log_transform_converts_zeros_to_negative_infinity():
 
 def test_read_filter_normalize_without_filtering():
     """Test reading, normalization, and log transformation without filtering."""
-    table = io.StringIO(
-        "species_name\tsample1\n"
-        "species_1\t1\n"
-        "species_2\t3\n"
-    )
+    table = io.StringIO("species_name\tsample1\n" "species_1\t1\n" "species_2\t3\n")
     table.name = "species_abundance.tsv"
 
     result = read_filter_normalize(table)
@@ -286,13 +272,11 @@ def test_read_filter_normalize_without_filtering():
 
     pd.testing.assert_frame_equal(result, expected)
 
+
 def test_read_filter_normalize_with_filtering():
     """Test filtering, normalization, and log transformation."""
     table = io.StringIO(
-        "species_name\tsample1\n"
-        "species_1\t1\n"
-        "species_2\t3\n"
-        "species_3\t10\n"
+        "species_name\tsample1\n" "species_1\t1\n" "species_2\t3\n" "species_3\t10\n"
     )
     table.name = "species_abundance.tsv"
 
@@ -322,13 +306,10 @@ def test_read_filter_normalize_with_filtering():
 
     pd.testing.assert_frame_equal(result, expected)
 
+
 def test_read_filter_normalize_rejects_samples_emptied_by_filtering():
     """Test that filtering cannot remove all species from a sample."""
-    table = io.StringIO(
-        "species_name\tsample1\n"
-        "species_1\t1\n"
-        "species_2\t2\n"
-    )
+    table = io.StringIO("species_name\tsample1\n" "species_1\t1\n" "species_2\t2\n")
     table.name = "species_abundance.tsv"
 
     # Minimum abundance = 1.
@@ -374,10 +355,7 @@ def test_compare_species_names_different(caplog):
 
     assert len(caplog.records) == 3
 
-    assert (
-        "Abundance tables have only 2 species names in common"
-        in caplog.text
-    )
+    assert "Abundance tables have only 2 species names in common" in caplog.text
     assert (
         "Make sure the abundance tables were generated with the same tool "
         "and database"
@@ -386,3 +364,20 @@ def test_compare_species_names_different(caplog):
         "Missing abundance values will be filled with zeros for non-shared species"
         in caplog.text
     )
+
+
+def test_compare_species_names_no_common_species(caplog):
+    """Test warning when abundance tables have no species in common."""
+    table_1 = pd.DataFrame(
+        {"sample1": [0.1, 0.9]},
+        index=["species_1", "species_2"],
+    )
+    table_2 = pd.DataFrame(
+        {"sample2": [0.2, 0.8]},
+        index=["species_3", "species_4"],
+    )
+
+    with caplog.at_level(logging.WARNING):
+        compare_species_names(table_1, table_2)
+
+    assert "Abundance tables have only 0 species names in common" in caplog.text
