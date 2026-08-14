@@ -6,6 +6,7 @@ import pytest
 from crocodeel.conta_event import (
     ContaminationEvent,
     ContaminationEventIO,
+    round_conta_rate,
 )
 
 
@@ -21,6 +22,60 @@ def test_contamination_event_defaults():
     assert event.rate == 0.0
     assert event.probability == 0.0
     assert not event.conta_line_species
+
+
+@pytest.mark.parametrize(
+    "rate, expected",
+    [
+        (0, 0),
+        (0.000123456, 0.000123),
+        (0.00123456, 0.00123),
+        (0.0123456, 0.0123),
+        (0.123456, 0.123),
+        (0.9999, 1.00),
+    ],
+)
+def test_round_conta_rate(rate, expected):
+    """Test rounding contamination rates to three significant digits."""
+    assert round_conta_rate(rate) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "rate, significant_digits, expected",
+    [
+        (0.00123456, 2, 0.0012),
+        (0.00123456, 3, 0.00123),
+        (0.00123456, 4, 0.001235),
+        (0.123456, 2, 0.12),
+        (0.123456, 3, 0.123),
+        (0.123456, 4, 0.1235),
+        (0.99999, 2, 1.0),
+        (0.99999, 3, 1.0),
+        (0.99999, 4, 1.0),
+    ],
+)
+def test_round_conta_rate_significant_digits(rate, significant_digits, expected):
+    """Test rounding with different numbers of significant digits."""
+    assert round_conta_rate(rate, significant_digits) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "rate, expected",
+    [
+        (0.0009999, 0.001),
+        (0.009999, 0.01),
+        (0.09999, 0.1),
+        (0.9999, 1.0),
+    ],
+)
+def test_round_conta_rate_magnitude_boundaries(rate, expected):
+    """Test rounding across orders of magnitude."""
+    assert round_conta_rate(rate) == pytest.approx(expected)
+
+
+def test_round_conta_rate_zero():
+    """Test that zero is returned unchanged."""
+    assert round_conta_rate(0) == 0
 
 
 def test_read_tsv(caplog):
@@ -119,6 +174,7 @@ def test_write_tsv():
         "sample1\tsample2\t5.00e-02\t0.99\tspecies1,species2\n"
         "sample3\tsample4\t1.00e-02\t0.85\tspecies3\n"
     )
+
 
 def test_tsv_round_trip():
     """Test that events can be written and read back."""

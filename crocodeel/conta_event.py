@@ -20,6 +20,7 @@ class ContaminationEvent:
 def round_conta_rate(rate: float, significant_digits: int = 3) -> float:
     """
     Rounds a contamination rate to a specific number of significant digits.
+    The contamination rate must be between 0 and 1.
 
     Unlike standard rounding, this adjusts the decimal precision based on
     the magnitude of the rate to ensure detail is preserved for small values.
