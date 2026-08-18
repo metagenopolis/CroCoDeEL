@@ -1,3 +1,7 @@
+"""Configure the CroCoDeEL runtime environment."""
+
 import os
-# Disable implicit parallelism in numpy
+
+# Prevent oversubscription when CroCoDeEL uses multiprocessing.
+# NumPy/OpenMP is restricted to one thread per process.
 os.environ["OMP_NUM_THREADS"] = "1"
