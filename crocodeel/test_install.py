@@ -1,26 +1,49 @@
-import sys
-import logging
-import importlib.resources
-from pathlib import Path
-from typing import Final
-from tempfile import NamedTemporaryFile
+"""End-to-end installation test for CroCoDeEL."""
+
 import filecmp
+import importlib.resources
+import logging
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+from typing import Final
+
+import pandas as pd
+
+from crocodeel import ab_table_utils
+from crocodeel.conta_event import ContaminationEventIO
+from crocodeel.plot_conta import (
+    Defaults as plot_conta_defaults,
+    run_plot_conta,
+)
+from crocodeel.search_conta import (
+    Defaults as search_conta_defaults,
+    run_search_conta,
+)
 
 
 class TestData:
+    """Files and expected results used by the installation test."""
+
     SPECIES_ABUNDANCE_TABLE: Final[Path] = Path(
-        importlib.resources.files().joinpath("test_data", "mgs_profiles_test.tsv")
+        importlib.resources.files().joinpath(
+            "test_data",
+            "mgs_profiles_test.tsv",
+        )
     )
 
     EXPECTED_CONTA_EVENTS_FILE: Final[Path] = Path(
         importlib.resources.files().joinpath(
-            "test_data", "results", "contamination_events.tsv"
+            "test_data",
+            "results",
+            "contamination_events.tsv",
         )
     )
 
     EXPECTED_PDF_REPORT_FILE: Final[Path] = Path(
         importlib.resources.files().joinpath(
-            "test_data", "results", "contamination_events.pdf"
+            "test_data",
+            "results",
+            "contamination_events.pdf",
         )
     )
 
@@ -38,64 +61,153 @@ class TestData:
 
 
 class TestInstall:
-    def __init__(self, keep_results: bool) -> None:
+    """Run an end-to-end test of the CroCoDeEL installation."""
+
+    def __init__(self, keep_results: bool = False) -> None:
+        self.keep_results = keep_results
+
+    def run(self) -> None:
+        """Run the complete installation test on the toy dataset."""
         logging.info("Running tests on the toy dataset")
 
-        self.keep_results = keep_results
-        self.species_ab_table_fp = TestData.SPECIES_ABUNDANCE_TABLE
-        with NamedTemporaryFile(
-            mode="w",
-            prefix="contamination_events_",
-            suffix=".tsv",
-            delete=False,
-            delete_on_close=False,
-        ) as conta_events_fh:
-            self.conta_events_fp = Path(conta_events_fh.name)
-        with NamedTemporaryFile(
-            mode="wb",
-            prefix="contamination_events_",
-            suffix=".pdf",
-            delete=False,
-            delete_on_close=False,
-        ) as pdf_report_fh:
-            self.pdf_report_fp = Path(pdf_report_fh.name)
+        species_ab_table = self._load_test_data()
 
-    def __del__(self) -> None:
-        if not self.keep_results:
-            self.pdf_report_fp.unlink()
-            self.conta_events_fp.unlink()
-            logging.info("Temporary result test files deleted")
+        conta_events_fp = self._create_temporary_file(".tsv")
+        pdf_report_fp = self._create_temporary_file(".pdf")
 
-    def check_results(self) -> None:
-        if not filecmp.cmp(
-            TestData.EXPECTED_CONTA_EVENTS_FILE, self.conta_events_fp
-        ):
-            logging.error("Contamination events found are not those expected")
-            sys.exit(1)
-        else:
-            logging.info(
-                "All contamination events with expected rates and probabilities found"
+        try:
+            self._run_search_conta(
+                species_ab_table,
+                conta_events_fp,
             )
 
-        # Directly comparing PDF contents is unreliable because metadata (e.g., creation date)
-        # can cause slight variations. To keep it simple, we verify that the PDF file size
-        # is within ±2% of the expected size range.
-        pdf_report_size = self.pdf_report_fp.stat().st_size
-        if pdf_report_size < TestData.MIN_PDF_REPORT_SIZE:
-            logging.error(
-                "PDF report appears too small: size is %d bytes (expected around %d bytes).",
-                pdf_report_size,
-                TestData.EXPECTED_PDF_REPORT_SIZE,
+            self._run_plot_conta(
+                species_ab_table,
+                conta_events_fp,
+                pdf_report_fp,
             )
-            sys.exit(1)
-        elif pdf_report_size > TestData.MAX_PDF_REPORT_SIZE:
-            logging.error(
-                "PDF report appears too large: size is %d bytes (expected around %d bytes).",
-                pdf_report_size,
-                TestData.EXPECTED_PDF_REPORT_SIZE,
+
+            self._check_results(
+                conta_events_fp,
+                pdf_report_fp,
             )
-            sys.exit(1)
-        else:
-            logging.info("PDF report size is within the expected range")
+
+        finally:
+            if not self.keep_results:
+                conta_events_fp.unlink(missing_ok=True)
+                pdf_report_fp.unlink(missing_ok=True)
+                logging.info("Temporary result test files deleted")
 
         logging.info("Tests completed successfully")
+
+    @staticmethod
+    def _load_test_data() -> pd.DataFrame:
+        """Load and normalize the species abundance table used for testing."""
+        with TestData.SPECIES_ABUNDANCE_TABLE.open(
+            "r",
+            encoding="utf8",
+        ) as species_ab_table_fh:
+            return ab_table_utils.read_filter_normalize(
+                species_ab_table_fh,
+                filtering_ab_thr_factor=None,
+            )
+
+    @staticmethod
+    def _create_temporary_file(suffix: str) -> Path:
+        """Create an empty temporary file and return its path."""
+        mode = "wb" if suffix == ".pdf" else "w"
+
+        with NamedTemporaryFile(
+            mode=mode,
+            prefix="crocodeel_test_",
+            suffix=suffix,
+            delete=False,
+        ) as fh:
+            return Path(fh.name)
+
+    @staticmethod
+    def _run_search_conta(
+        species_ab_table: pd.DataFrame,
+        conta_events_fp: Path,
+    ) -> None:
+        """Run contamination detection and save the resulting events."""
+        with (
+            search_conta_defaults.MODEL_FILE.open("rb") as rf_model_fh,
+            conta_events_fp.open("w", encoding="utf8") as conta_events_fh,
+        ):
+            conta_events = run_search_conta(
+                species_ab_table,
+                None,
+                rf_model_fh,
+                search_conta_defaults.PROBABILITY_CUTOFF,
+                search_conta_defaults.RATE_CUTOFF,
+                nproc=1,
+            )
+
+            ContaminationEventIO.write_tsv(
+                conta_events,
+                conta_events_fh,
+            )
+
+    @staticmethod
+    def _run_plot_conta(
+        species_ab_table: pd.DataFrame,
+        conta_events_fp: Path,
+        pdf_report_fp: Path,
+    ) -> None:
+        """Read contamination events and generate the PDF report."""
+        with (
+            conta_events_fp.open("r", encoding="utf8") as conta_events_fh,
+            pdf_report_fp.open("wb") as pdf_report_fh,
+        ):
+            conta_events = ContaminationEventIO.read_tsv(
+                conta_events_fh,
+            )
+
+            run_plot_conta(
+                species_ab_table,
+                None,
+                conta_events,
+                pdf_report_fh,
+                plot_conta_defaults.NROW,
+                plot_conta_defaults.NCOL,
+                no_conta_line=False,
+                color_conta_species=False,
+            )
+
+    @staticmethod
+    def _check_results(
+        conta_events_fp: Path,
+        pdf_report_fp: Path,
+    ) -> None:
+        """Check that generated results match the expected results."""
+        if not filecmp.cmp(
+            TestData.EXPECTED_CONTA_EVENTS_FILE,
+            conta_events_fp,
+            shallow=False,
+        ):
+            raise RuntimeError(
+                "Contamination events found are not those expected."
+            )
+
+        logging.info(
+            "All contamination events with expected rates and probabilities found"
+        )
+
+        pdf_report_size = pdf_report_fp.stat().st_size
+
+        if pdf_report_size < TestData.MIN_PDF_REPORT_SIZE:
+            raise RuntimeError(
+                "PDF report appears too small: "
+                f"size is {pdf_report_size} bytes "
+                f"(expected around {TestData.EXPECTED_PDF_REPORT_SIZE} bytes)."
+            )
+
+        if pdf_report_size > TestData.MAX_PDF_REPORT_SIZE:
+            raise RuntimeError(
+                "PDF report appears too large: "
+                f"size is {pdf_report_size} bytes "
+                f"(expected around {TestData.EXPECTED_PDF_REPORT_SIZE} bytes)."
+            )
+
+        logging.info("PDF report size is within the expected range")
