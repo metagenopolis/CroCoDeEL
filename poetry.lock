@@ -263,6 +263,25 @@ files = [
 ]
 
 [[package]]
+name = "joblib-stubs"
+version = "1.5.3.1.20260117"
+description = "joblib stubs"
+optional = false
+python-versions = ">=3.11"
+groups = ["mypy"]
+files = [
+    {file = "joblib_stubs-1.5.3.1.20260117-py3-none-any.whl", hash = "sha256:ef9f570617b232263c8166f5b4351a5dcc90669d8b07e7e2cd7b25c3b0f26d5f"},
+    {file = "joblib_stubs-1.5.3.1.20260117.tar.gz", hash = "sha256:d420f9e26636df01e1bda851bf5bce9a8dbd6db84f08afe1dfdb963e6651e724"},
+]
+
+[package.dependencies]
+typing-extensions = ">=4.4.0"
+
+[package.extras]
+mypy = ["mypy (>=1.19.1)"]
+mypy-strict = ["mypy (==1.19.1)", "mypy (>=1.19.1)"]
+
+[[package]]
 name = "kiwisolver"
 version = "1.4.9"
 description = "A fast implementation of the Cassowary constraint solver"
@@ -1206,6 +1225,18 @@ maintenance = ["conda-lock (==3.0.1)"]
 tests = ["matplotlib (>=3.6.1)", "mypy (>=1.15)", "numpydoc (>=1.2.0)", "pandas (>=1.5.0)", "polars (>=0.20.30)", "pooch (>=1.8.0)", "pyamg (>=5.0.0)", "pyarrow (>=12.0.0)", "pytest (>=7.1.2)", "pytest-cov (>=2.9.0)", "ruff (>=0.11.7)"]
 
 [[package]]
+name = "scikit-learn-stubs"
+version = "0.0.3"
+description = "scikit-learn stubs from the Microsoft python-type-stubs repository"
+optional = false
+python-versions = ">=3.9"
+groups = ["mypy"]
+files = [
+    {file = "scikit_learn_stubs-0.0.3-py3-none-any.whl", hash = "sha256:5d51257ab62c79d265fa7b05e69ad64b038ac7803bfb1d6490562d4da3109aae"},
+    {file = "scikit_learn_stubs-0.0.3.tar.gz", hash = "sha256:6a41fd3e26aedb923298c3f68a0746d2eed757f24615173f900ce2b942d70814"},
+]
+
+[[package]]
 name = "scipy"
 version = "1.17.0"
 description = "Fundamental algorithms for scientific computing in Python"
@@ -1429,4 +1460,4 @@ zstd = ["backports-zstd (>=1.0.0) ; python_version < \"3.14\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "c76f92b3bcf2dd736e72e75690129b5225a782464d8244341183b7b0341571fe"
+content-hash = "68a14ce41ca4d594fed6f89d42e9a19268200195f635952603681fe24ce5655e"

@@ -42,6 +42,8 @@ pyarrow = ">=16.0.0"
 mypy = "^1.19"
 pandas-stubs = "^2.3"
 types-tqdm = "^4.67"
+joblib-stubs = "^1.5"
+scikit-learn-stubs = "^0.0.3"
 
 [tool.poetry.group.pylint.dependencies]
 pylint = "^4.0"
