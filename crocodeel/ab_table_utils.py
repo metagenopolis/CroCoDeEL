@@ -97,10 +97,14 @@ def log_transform(species_ab_table: pd.DataFrame) -> pd.DataFrame:
     Zeros are intentionally converted to -inf.
     """
     with np.errstate(divide="ignore"):
-        species_ab_table = np.log10(species_ab_table)
+        log_species_ab_table = pd.DataFrame(
+            np.log10(species_ab_table),
+            index=species_ab_table.index,
+            columns=species_ab_table.columns,
+        )
 
     logging.info("Species abundance table log-transformed")
-    return species_ab_table
+    return log_species_ab_table
 
 
 def filter_low_ab(
