@@ -22,28 +22,34 @@ from crocodeel.search_conta import (
 
 
 class TestData:
-    """Files and expected results used by the installation test."""
+    """Files and expected results used by the self-test suite"""
 
     SPECIES_ABUNDANCE_TABLE: Final[Path] = Path(
-        importlib.resources.files().joinpath(
-            "test_data",
-            "mgs_profiles_test.tsv",
+        str(
+            importlib.resources.files().joinpath(
+                "test_data",
+                "mgs_profiles_test.tsv",
+            )
         )
     )
 
     EXPECTED_CONTA_EVENTS_FILE: Final[Path] = Path(
-        importlib.resources.files().joinpath(
-            "test_data",
-            "results",
-            "contamination_events.tsv",
+        str(
+            importlib.resources.files().joinpath(
+                "test_data",
+                "results",
+                "contamination_events.tsv",
+            )
         )
     )
 
     EXPECTED_PDF_REPORT_FILE: Final[Path] = Path(
-        importlib.resources.files().joinpath(
-            "test_data",
-            "results",
-            "contamination_events.pdf",
+        str(
+            importlib.resources.files().joinpath(
+                "test_data",
+                "results",
+                "contamination_events.pdf",
+            )
         )
     )
 
@@ -60,8 +66,8 @@ class TestData:
     )
 
 
-class TestInstall:
-    """Run an end-to-end test of the CroCoDeEL installation."""
+class SelfTest:
+    """Run an end-to-end self-test of CroCoDeEL."""
 
     def __init__(self, keep_results: bool = False) -> None:
         self.keep_results = keep_results

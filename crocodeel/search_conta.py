@@ -10,7 +10,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from sklearn.exceptions import InconsistentVersionWarning
+from sklearn.exceptions import InconsistentVersionWarning # type: ignore[attr-defined]
 from sklearn.ensemble import RandomForestClassifier
 from crocodeel.conta_event import ContaminationEvent
 from crocodeel.conta_features import ContaminationFeatureExtractor
@@ -78,8 +78,12 @@ def run_search_conta(
 
 
 class Defaults:
-    MODEL_FILE: Final[Path] = importlib.resources.files().joinpath(
-        "models", "crocodeel_rf_Feb2026_2.joblib"
+    MODEL_FILE: Final[Path] = Path(
+        str(
+            importlib.resources.files().joinpath(
+                "models", "crocodeel_rf_Feb2026_2.joblib"
+            )
+        )
     )
     PROBABILITY_CUTOFF: Final[float] = 0.5
     RATE_CUTOFF: Final[float] = 0.0
