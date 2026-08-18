@@ -34,4 +34,4 @@ jobs:
         run: poetry run pytest -v
 
       - name: Run installation test
-        run: poetry run crocodeel test_install
+        run: poetry run crocodeel self_test
