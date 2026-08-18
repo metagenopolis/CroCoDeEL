@@ -145,7 +145,7 @@ xz -d training_dataset.meteor.tsv.xz
 ```
 Then, use the following command to train a new model:  
 ```
-crocodeel train_model -s training_dataset.meteor.tsv -m crocodeel_model.tsv -r crocodeel_model_perf.tsv
+crocodeel train_model -s training_dataset.meteor.tsv -m crocodeel_model.joblib -r crocodeel_model_perf.json
 ```
 Finally, to use your trained model instead of the default one, pass it with the _-m_ option:  
 ```
