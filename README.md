@@ -37,14 +37,15 @@ Docker and Singularity containers are also available on [BioContainers](https://
 
 For relatively small datasets (< 200 samples), CroCoDeEL can also be run directly from the web interface available at https://metagenopolis.github.io/CroCoDeEL_interpreter/#runCroCoDeEL
 
-## Installation test
+## Self-test
 
-To verify that CroCoDeEL is installed correctly, run the following command:  
-```
-crocodeel test_install
+To verify that CroCoDeEL is working correctly, run the following command:
+
+```bash
+crocodeel self_test
 ```
 This command runs CroCoDeEL on a toy dataset and checks whether the generated results match the expected ones.  
-To inspect the results, you can rerun the command with the `--keep-results` parameter.
+To inspect the generated results, rerun the command with the `--keep-results` option.
 
 ## Quick start
 ### Input

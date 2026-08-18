@@ -21,7 +21,7 @@ from crocodeel.search_conta import (
     Defaults as search_conta_defaults,
     run_search_conta,
 )
-from crocodeel.test_install import TestInstall
+from crocodeel.self_test import SelfTest
 from crocodeel.train_model import (
     Defaults as train_model_defaults,
     run_train_model,
@@ -488,12 +488,9 @@ def get_arguments() -> argparse.Namespace:
         ),
     )
 
-    test_install_parser = subparsers.add_parser(
-        "test_install",
-        help=(
-            f"Test if {prog_name} is correctly installed "
-            "and generates the expected results"
-        ),
+    self_test_parser = subparsers.add_parser(
+        "self_test",
+        help=f"Run an end-to-end test of the {prog_name} workflow on a toy dataset",
     )
 
     train_model_parser = subparsers.add_parser(
@@ -524,8 +521,8 @@ def get_arguments() -> argparse.Namespace:
     add_train_model_abundance_table_arguments(train_model_parser)
     add_train_model_arguments(train_model_parser)
 
-    # test_install
-    test_install_parser.add_argument(
+    # self_test
+    self_test_parser.add_argument(
         "--keep-results",
         dest="keep_results",
         action="store_true",
@@ -765,8 +762,8 @@ def main() -> None:
     set_logging()
     args = get_arguments()
 
-    if args.command == "test_install":
-        TestInstall(args.keep_results).run()
+    if args.command == "self_test":
+        SelfTest(args.keep_results).run()
         return
 
     if args.command == "search_conta":
