@@ -1,12 +1,14 @@
-from typing import BinaryIO, Optional, Final
+from typing import BinaryIO, Final, Optional
 import logging
 from time import perf_counter
-from matplotlib.backends.backend_pdf import PdfPages
+
 import matplotlib.pyplot as plt
-from matplotlib.axes import Axes
-import pandas as pd
 import numpy as np
+import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.backends.backend_pdf import PdfPages
 from tqdm import tqdm
+
 from crocodeel.conta_event import ContaminationEvent
 from crocodeel.conta_event import round_conta_rate
 
@@ -19,15 +21,21 @@ def run_plot_conta(
     nrow: int,
     ncol: int,
     no_conta_line: bool,
-    color_conta_species: bool
+    color_conta_species: bool,
 ) -> None:
+    """Generate a PDF report containing contamination plots."""
     if species_ab_table_2 is not None:
-        species_ab_table = species_ab_table.join(species_ab_table_2, how="outer").fillna(0.0)
+        species_ab_table = species_ab_table.join(
+            species_ab_table_2,
+            how="outer",
+        ).fillna(0.0)
 
     start = perf_counter()
     logging.info("Generation of the PDF report started")
+
     if not conta_events:
         logging.warning("The PDF report will be empty")
+
     ContaminationPlotsReport(
         species_ab_table,
         conta_events,
@@ -36,9 +44,12 @@ def run_plot_conta(
         no_conta_line,
         color_conta_species,
     ).save_to_pdf(pdf_report_fh)
-    logging.info("PDF report generated in %.1f seconds", perf_counter() - start)
+
+    logging.info(
+        "PDF report generated in %.1f seconds",
+        perf_counter() - start,
+    )
     logging.info("PDF report saved in %s", pdf_report_fh.name)
-    pdf_report_fh.close()
 
 
 class Defaults:
@@ -51,6 +62,7 @@ class Defaults:
 
 
 class ContaminationPlotsReport:
+    """Generate scatterplot reports for detected contamination events."""
 
     def __init__(
         self,
@@ -61,48 +73,69 @@ class ContaminationPlotsReport:
         no_conta_line: bool,
         color_conta_species: bool,
     ) -> None:
-        self.species_ab_table = species_ab_table
+        self.species_ab_table = species_ab_table.copy()
         self.conta_events = conta_events
         self.nrow = nrow
         self.ncol = ncol
         self.no_conta_line = no_conta_line
         self.color_conta_species = color_conta_species
 
-        if species_ab_table.shape[1] > 0:
+        if self.species_ab_table.shape[1] > 0:
             min_non_zero = (
-                self.species_ab_table[self.species_ab_table > -np.inf].min().min()
+                self.species_ab_table[
+                    self.species_ab_table > -np.inf
+                ].min().min()
             )
             self.pseudo_zero = int(np.floor(min_non_zero))
-            self.species_ab_table.replace(-np.inf, self.pseudo_zero, inplace=True)
+            self.species_ab_table.replace(
+                -np.inf,
+                self.pseudo_zero,
+                inplace=True,
+            )
 
-    def _create_plot(self, conta_event: ContaminationEvent, ax: Axes) -> None:
-        # Do not show species absent in both samples
-        # for faster rendering and reduce PDF file size
-        non_zero_species = (
-            self.species_ab_table[conta_event.target] > self.pseudo_zero
-        ) | (self.species_ab_table[conta_event.source] > self.pseudo_zero)
-
-        scatterplot = ax.scatter(
-            x=self.species_ab_table.loc[non_zero_species, conta_event.target],
-            y=self.species_ab_table.loc[non_zero_species, conta_event.source],
-            s=10,
-            facecolor="none",
+    def _get_species_to_plot(
+        self,
+        conta_event: ContaminationEvent,
+    ) -> pd.Series:
+        """Return a mask selecting species detected in at least one sample."""
+        return (
+            (
+                self.species_ab_table[conta_event.target]
+                > self.pseudo_zero
+            )
+            | (
+                self.species_ab_table[conta_event.source]
+                > self.pseudo_zero
+            )
         )
 
-        if self.color_conta_species:
-            edge_colors = [
-                (
-                    "orange"
-                    if species in conta_event.conta_line_species
-                    else "black"
-                )
-                for species in self.species_ab_table.index[non_zero_species]
-            ]
-            scatterplot.set_edgecolor(edge_colors)
-        else:
+    def _set_scatter_colors(
+        self,
+        scatterplot,
+        conta_event: ContaminationEvent,
+        species_to_plot: pd.Series,
+    ) -> None:
+        """Set scatterplot edge colors according to contamination status."""
+        if not self.color_conta_species:
             scatterplot.set_edgecolor("black")
+            return
 
-        # Add identity line line
+        edge_colors = [
+            (
+                "orange"
+                if species in conta_event.conta_line_species
+                else "black"
+            )
+            for species in self.species_ab_table.index[species_to_plot]
+        ]
+        scatterplot.set_edgecolor(edge_colors)
+
+    def _add_reference_lines(
+        self,
+        ax: Axes,
+        conta_event: ContaminationEvent,
+    ) -> None:
+        """Add the identity and contamination lines to a plot."""
         ax.axline(
             (self.pseudo_zero, self.pseudo_zero),
             slope=1,
@@ -111,12 +144,12 @@ class ContaminationPlotsReport:
             linewidth=0.5,
         )
 
-        # Add contamination line
         if not self.no_conta_line:
             ax.axline(
                 (
                     self.pseudo_zero,
-                    self.pseudo_zero - np.log10(conta_event.rate),
+                    self.pseudo_zero
+                    - np.log10(conta_event.rate),
                 ),
                 slope=1,
                 color="red",
@@ -125,8 +158,10 @@ class ContaminationPlotsReport:
                 alpha=0.5,
             )
 
-        # Set labels and title
+    def _set_abundance_axis(self, ax: Axes) -> None:
+        """Configure axes and labels for log-transformed abundances."""
         ticks = np.arange(self.pseudo_zero, 1)
+
         ax.set_xticks(ticks)
         ax.set_yticks(ticks)
         ax.tick_params(direction="in")
@@ -134,8 +169,39 @@ class ContaminationPlotsReport:
         ticks_labels = [f"$10^{{{t}}}$" for t in ticks]
         ticks_labels[0] = "0"
         ticks_labels[-1] = "1"
+
         ax.set_xticklabels(ticks_labels)
         ax.set_yticklabels(ticks_labels)
+
+    def _create_plot(
+        self,
+        conta_event: ContaminationEvent,
+        ax: Axes,
+    ) -> None:
+        """Create a scatterplot for a contamination event."""
+        species_to_plot = self._get_species_to_plot(conta_event)
+
+        scatterplot = ax.scatter(
+            x=self.species_ab_table.loc[
+                species_to_plot,
+                conta_event.target,
+            ],
+            y=self.species_ab_table.loc[
+                species_to_plot,
+                conta_event.source,
+            ],
+            s=10,
+            facecolor="none",
+        )
+
+        self._set_scatter_colors(
+            scatterplot,
+            conta_event,
+            species_to_plot,
+        )
+
+        self._add_reference_lines(ax, conta_event)
+        self._set_abundance_axis(ax)
 
         ax.set_xlabel(conta_event.target)
         ax.set_ylabel(conta_event.source)
@@ -145,31 +211,57 @@ class ContaminationPlotsReport:
             f"rate = {round_conta_rate(100 * conta_event.rate)}%"
         )
 
+    def _create_page(
+        self,
+        page_id: int,
+        pdf: PdfPages,
+    ) -> None:
+        """Create and save one page of contamination plots."""
+        num_plots_per_page = self.nrow * self.ncol
+
+        fig, axs = plt.subplots(
+            self.nrow,
+            self.ncol,
+            figsize=(4 * self.ncol, 4 * self.nrow),
+        )
+        axs = np.atleast_1d(axs).flatten()
+
+        for plot_id in range(num_plots_per_page):
+            global_plot_id = (
+                page_id * num_plots_per_page
+            ) + plot_id
+
+            if global_plot_id < len(self.conta_events):
+                self._create_plot(
+                    self.conta_events[global_plot_id],
+                    axs[plot_id],
+                )
+            else:
+                axs[plot_id].axis("off")
+
+        plt.tight_layout()
+        fig.savefig(pdf, format="pdf")
+        plt.close("all")
+
     def save_to_pdf(self, pdf_fh: BinaryIO) -> None:
+        """Generate a PDF report containing contamination plots."""
         num_plots_per_page = self.nrow * self.ncol
         num_pages = int(
-            np.ceil(float(len(self.conta_events) / num_plots_per_page))
+            np.ceil(
+                float(len(self.conta_events) / num_plots_per_page)
+            )
         )
+
         with PdfPages(pdf_fh) as pdf:
             pbar = tqdm(
                 range(num_pages),
                 total=num_pages,
                 leave=False,
-                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} pages generated",
+                bar_format=(
+                    "{l_bar}{bar}| "
+                    "{n_fmt}/{total_fmt} pages generated"
+                ),
             )
-            for page in pbar:
-                fig, axs = plt.subplots(
-                    self.nrow, self.ncol, figsize=(4 * self.ncol, 4 * self.nrow)
-                )
-                axs = axs.flatten()
-                for plot_id in range(num_plots_per_page):
-                    global_plot_id = (page * num_plots_per_page) + plot_id
-                    if global_plot_id < len(self.conta_events):
-                        self._create_plot(
-                            self.conta_events[global_plot_id], axs[plot_id]
-                        )
-                    else:
-                        axs[plot_id].axis("off")
-                plt.tight_layout()
-                fig.savefig(pdf, format="pdf")
-                plt.close('all')
+
+            for page_id in pbar:
+                self._create_page(page_id, pdf)
