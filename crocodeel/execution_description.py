@@ -1,3 +1,5 @@
+"""Store metadata describing a CroCoDeEL execution."""
+
 from socket import gethostname
 from getpass import getuser
 from datetime import datetime
@@ -7,6 +9,7 @@ from typing import Optional
 
 
 class ExecutionDescription:
+    """Describe the parameters and environment of a CroCoDeEL execution."""
 
     def __init__(
         self,
@@ -15,7 +18,7 @@ class ExecutionDescription:
         rf_model_fp: Path,
         filtering_ab_thr_factor: Optional[float],
         probability_cutoff: float,
-        rate_cutoff: float
+        rate_cutoff: float,
     ) -> None:
         self.software_version = version("crocodeel")
         self.rf_model_fp = rf_model_fp

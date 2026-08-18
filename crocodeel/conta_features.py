@@ -1,5 +1,8 @@
+"""Extract features used to detect cross-sample contamination."""
+
 from typing import Final, ClassVar, Optional
 from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import RANSACRegressor
@@ -10,6 +13,8 @@ from sklearn.neighbors import NearestNeighbors
 
 @dataclass
 class ContaminationFeatures:
+    """Features extracted from a potential contamination event."""
+
     NUM_FEATURES: ClassVar[int] = 6
 
     values: np.ndarray
@@ -49,6 +54,8 @@ class _UnitSlopeRegression(RegressorMixin, BaseEstimator):
 
 
 class ContaminationFeatureExtractor:
+    """Extract features describing potential contamination lines."""
+
     CONTA_LINE_MIN_NUM_SPECIES: Final[int] = 8
     UPPER_LEFT_QUADRANT_MAX_NUM_SPECIES: Final[int] = 2
     RANSAC_MAX_TRIALS: Final[int] = 30
@@ -67,6 +74,11 @@ class ContaminationFeatureExtractor:
         )
 
     def extract(self, source: str, target: str) -> Optional[ContaminationFeatures]:
+        """Extract contamination features for a source-target sample pair.
+
+        Returns None when a potential contamination line cannot be
+        identified with sufficient confidence.
+        """
         # Select abundance of all species from the current sample pair
         sample_pair_species_ab = self.species_ab_table[[target, source]].to_numpy()
 

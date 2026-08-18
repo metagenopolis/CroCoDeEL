@@ -1,3 +1,5 @@
+"""Generate PDF reports for detected cross-sample contamination."""
+
 from typing import BinaryIO, Final, Optional
 import logging
 from time import perf_counter
@@ -53,6 +55,8 @@ def run_plot_conta(
 
 
 class Defaults:
+    """Default parameters controlling the PDF report layout."""
+
     MIN_NROW: Final[int] = 1
     NROW: Final[int] = 4
     MAX_NROW: Final[int] = 11
@@ -82,9 +86,7 @@ class ContaminationPlotsReport:
 
         if self.species_ab_table.shape[1] > 0:
             min_non_zero = (
-                self.species_ab_table[
-                    self.species_ab_table > -np.inf
-                ].min().min()
+                self.species_ab_table[self.species_ab_table > -np.inf].min().min()
             )
             self.pseudo_zero = int(np.floor(min_non_zero))
             self.species_ab_table.replace(
@@ -98,15 +100,8 @@ class ContaminationPlotsReport:
         conta_event: ContaminationEvent,
     ) -> pd.Series:
         """Return a mask selecting species detected in at least one sample."""
-        return (
-            (
-                self.species_ab_table[conta_event.target]
-                > self.pseudo_zero
-            )
-            | (
-                self.species_ab_table[conta_event.source]
-                > self.pseudo_zero
-            )
+        return (self.species_ab_table[conta_event.target] > self.pseudo_zero) | (
+            self.species_ab_table[conta_event.source] > self.pseudo_zero
         )
 
     def _set_scatter_colors(
@@ -121,11 +116,7 @@ class ContaminationPlotsReport:
             return
 
         edge_colors = [
-            (
-                "orange"
-                if species in conta_event.conta_line_species
-                else "black"
-            )
+            ("orange" if species in conta_event.conta_line_species else "black")
             for species in self.species_ab_table.index[species_to_plot]
         ]
         scatterplot.set_edgecolor(edge_colors)
@@ -148,8 +139,7 @@ class ContaminationPlotsReport:
             ax.axline(
                 (
                     self.pseudo_zero,
-                    self.pseudo_zero
-                    - np.log10(conta_event.rate),
+                    self.pseudo_zero - np.log10(conta_event.rate),
                 ),
                 slope=1,
                 color="red",
@@ -227,9 +217,7 @@ class ContaminationPlotsReport:
         axs = np.atleast_1d(axs).flatten()
 
         for plot_id in range(num_plots_per_page):
-            global_plot_id = (
-                page_id * num_plots_per_page
-            ) + plot_id
+            global_plot_id = (page_id * num_plots_per_page) + plot_id
 
             if global_plot_id < len(self.conta_events):
                 self._create_plot(
@@ -246,21 +234,14 @@ class ContaminationPlotsReport:
     def save_to_pdf(self, pdf_fh: BinaryIO) -> None:
         """Generate a PDF report containing contamination plots."""
         num_plots_per_page = self.nrow * self.ncol
-        num_pages = int(
-            np.ceil(
-                float(len(self.conta_events) / num_plots_per_page)
-            )
-        )
+        num_pages = int(np.ceil(float(len(self.conta_events) / num_plots_per_page)))
 
         with PdfPages(pdf_fh) as pdf:
             pbar = tqdm(
                 range(num_pages),
                 total=num_pages,
                 leave=False,
-                bar_format=(
-                    "{l_bar}{bar}| "
-                    "{n_fmt}/{total_fmt} pages generated"
-                ),
+                bar_format=("{l_bar}{bar}| " "{n_fmt}/{total_fmt} pages generated"),
             )
 
             for page_id in pbar:
