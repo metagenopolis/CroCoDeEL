@@ -1,21 +1,28 @@
-from multiprocessing import Pool
-import logging
-from time import perf_counter
-from typing import BinaryIO, TextIO, Final, Optional
+"""Train a Random Forest model for cross-sample contamination detection."""
+
 import json
+import logging
 import re
 import sys
+from multiprocessing import Pool
+from time import perf_counter
+from typing import BinaryIO, Final, TextIO, Any
+
+import joblib
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
-import joblib
+from sklearn.model_selection import train_test_split
+from tqdm import tqdm
+
 from crocodeel.conta_features import (
-    ContaminationFeatures,
     ContaminationFeatureExtractor,
+    ContaminationFeatures,
 )
+
+
+SamplePair = tuple[str, str]
 
 
 def run_train_model(
@@ -27,126 +34,107 @@ def run_train_model(
     rng_seed: int,
     nproc: int,
 ) -> None:
+    """Train a Random Forest model and save its performance report."""
     sample_pairs = _reconstruct_sample_pairs(species_ab_table)
+
     is_contaminated = np.array(
-        [source_sample.startswith("conta") for source_sample, _ in sample_pairs]
+        [source_sample.startswith("conta") for source_sample, _ in sample_pairs],
+        dtype=bool,
     )
 
     logging.info(
-        "Abundance table contains %i sample pairs: %i contaminated and %i non-contaminated",
+        "Abundance table contains %i sample pairs: "
+        "%i contaminated and %i non-contaminated",
         len(sample_pairs),
-        sum(is_contaminated),
-        sum(~is_contaminated),
+        int(is_contaminated.sum()),
+        int((~is_contaminated).sum()),
     )
 
-    features_computer = FeaturesComputerDriver(
-        species_ab_table, sample_pairs, nproc
-    )
-    start = perf_counter()
-    logging.info(
-        "Computing features using %d process%s...",
+    all_features = _compute_features(
+        species_ab_table,
+        sample_pairs,
         nproc,
-        "" if nproc == 1 else "es",
-    )
-    all_features = features_computer.compute_all_features()
-    logging.info(
-        "Feature computation completed in %.1f seconds", perf_counter() - start
     )
 
-    # Check sample pairs where feature computation failed
-    # due to missing candidate contamination line
-    sample_pairs_no_features = np.any(np.isnan(all_features), axis=1)
-    num_conta_no_features = sum(is_contaminated[sample_pairs_no_features])
-    num_no_conta_no_features = sum(sample_pairs_no_features) - num_conta_no_features
-    if num_conta_no_features != 0:
-        logging.info(
-            "Feature computation failed for %i contaminated sample pairs",
-            num_conta_no_features,
-        )
-    if num_no_conta_no_features != 0:
-        logging.info(
-            "Feature computation failed for %i non-contaminated sample pairs",
-            num_no_conta_no_features,
-        )
+    all_features, is_contaminated = _filter_invalid_features(
+        all_features,
+        is_contaminated,
+    )
 
-    # Remove these problematic sample pairs
-    is_contaminated = is_contaminated[~sample_pairs_no_features]
-    all_features = all_features[~sample_pairs_no_features]
     logging.info(
         "%i sample pairs remain: %i contaminated, %i non-contaminated",
         len(is_contaminated),
-        sum(is_contaminated),
-        sum(~is_contaminated),
+        int(is_contaminated.sum()),
+        int((~is_contaminated).sum()),
     )
 
-    # Create train and test splits
-    features_train, features_test, is_contaminated_train, is_contaminated_test = (
-        train_test_split(
-            all_features, is_contaminated, test_size=test_size, random_state=rng_seed
-        )
+    (
+        features_train,
+        features_test,
+        is_contaminated_train,
+        is_contaminated_test,
+    ) = train_test_split(
+        all_features,
+        is_contaminated,
+        test_size=test_size,
+        random_state=rng_seed,
     )
+
     logging.info(
         "Dataset split: %.0f%% for training, %.0f%% for testing",
         100 * (1 - test_size),
         100 * test_size,
     )
 
-    # Train the model
-    rf_model = RandomForestClassifier(
-        n_estimators=ntrees, n_jobs=nproc, random_state=rng_seed
-    )
-    start = perf_counter()
-    logging.info(
-        "Training Random Forest model with %d trees using %d process%s...",
+    rf_model = _train_model(
+        features_train,
+        is_contaminated_train,
         ntrees,
+        rng_seed,
         nproc,
-        "" if nproc == 1 else "es",
     )
-    rf_model.fit(features_train, is_contaminated_train)
-    logging.info("Training completed in %.1f seconds", perf_counter() - start)
 
-    # Save the model
     rf_model.set_params(n_jobs=1)
-    joblib.dump(rf_model, model_fh, compress=3)
-    logging.info("Model saved to %s", model_fh.name)
-    model_fh.close()
 
-    # Create and save the performance report
-    pred_is_contaminated_train = rf_model.predict(features_train)
-    pred_is_contaminated_test = rf_model.predict(features_test)
-    performance_report = {
-        "train": {
-            "classification_report": classification_report(
-                is_contaminated_train,
-                pred_is_contaminated_train,
-                output_dict=True,
-            )
-        },
-        "test": {
-            "classification_report": classification_report(
-                is_contaminated_test,
-                pred_is_contaminated_test,
-                output_dict=True,
-            )
-        }
-    }
-    json.dump(performance_report, json_report_fh, indent=4)
-    logging.info(
-        "Model performance report saved to %s", json_report_fh.name
+    joblib.dump(
+        rf_model,
+        model_fh,
+        compress=3,
     )
-    json_report_fh.close()
+    logging.info("Model saved to %s", model_fh.name)
+
+    performance_report = _build_performance_report(
+        rf_model,
+        features_train,
+        features_test,
+        is_contaminated_train,
+        is_contaminated_test,
+    )
+
+    json.dump(
+        performance_report,
+        json_report_fh,
+        indent=4,
+    )
+
+    logging.info(
+        "Model performance report saved to %s",
+        json_report_fh.name,
+    )
 
 
 def _reconstruct_sample_pairs(
     species_ab_table: pd.DataFrame,
-) -> list[tuple[str, str]] :
-    all_samples = species_ab_table.columns
+) -> list[SamplePair]:
+    """Reconstruct source-target sample pairs from sample names."""
+    sample_names = list(species_ab_table.columns)
 
-    # Identify invalid sample names
     sample_name_pattern = re.compile(r"^(conta_|non_conta_)(source_|target_)case_\d+$")
+
     invalid_sample_names = [
-        name for name in all_samples if not sample_name_pattern.match(name)
+        name for name in sample_names if sample_name_pattern.fullmatch(name) is None
     ]
+
     if invalid_sample_names:
         logging.error(
             "The following sample names do not match the expected pattern '%s': %s",
@@ -155,62 +143,203 @@ def _reconstruct_sample_pairs(
         )
         sys.exit(1)
 
-    # Identify source and target samples
-    source_samples = [sample for sample in all_samples if "source" in sample]
-    target_samples = [sample for sample in all_samples if "target" in sample]
+    source_samples = [sample for sample in sample_names if "_source_" in sample]
 
-    # Check if each source has a corresponding target
+    target_samples = [sample for sample in sample_names if "_target_" in sample]
+
+    source_sample_names = set(source_samples)
+    target_sample_names = set(target_samples)
+
     sources_without_targets = [
         source_sample
         for source_sample in source_samples
-        if source_sample.replace("source", "target") not in target_samples
+        if source_sample.replace("_source_", "_target_") not in target_sample_names
     ]
+
+    targets_without_sources = [
+        target_sample
+        for target_sample in target_samples
+        if target_sample.replace("_target_", "_source_") not in source_sample_names
+    ]
+
     if sources_without_targets:
         logging.error(
             "The following source samples have no corresponding targets: %s",
             ", ".join(sources_without_targets),
         )
-    # Check if each target has a corresponding source
-    targets_without_sources = [
-        target_sample
-        for target_sample in target_samples
-        if target_sample.replace("target", "source") not in source_samples
-    ]
+
     if targets_without_sources:
         logging.error(
             "The following target samples have no corresponding sources: %s",
             ", ".join(targets_without_sources),
         )
+
     if sources_without_targets or targets_without_sources:
         sys.exit(1)
 
-    # Everything is OK
-    # We can reconstruct sample pairs
-    sample_pairs = [
-        (source_sample, source_sample.replace("source", "target"))
+    return [
+        (
+            source_sample,
+            source_sample.replace("_source_", "_target_"),
+        )
         for source_sample in source_samples
     ]
 
-    return sample_pairs
+
+def _compute_features(
+    species_ab_table: pd.DataFrame,
+    sample_pairs: list[SamplePair],
+    nproc: int,
+) -> np.ndarray:
+    """Compute contamination features for all sample pairs."""
+    start = perf_counter()
+
+    logging.info(
+        "Computing features using %d process%s...",
+        nproc,
+        "" if nproc == 1 else "es",
+    )
+
+    features_computer = FeaturesComputerDriver(
+        species_ab_table,
+        sample_pairs,
+        nproc,
+    )
+
+    all_features = features_computer.compute_all_features()
+
+    logging.info(
+        "Feature computation completed in %.1f seconds",
+        perf_counter() - start,
+    )
+
+    return all_features
+
+
+def _filter_invalid_features(
+    all_features: np.ndarray,
+    is_contaminated: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Remove sample pairs for which feature extraction failed."""
+    invalid_features = np.any(
+        np.isnan(all_features),
+        axis=1,
+    )
+
+    num_conta_invalid = int(np.sum(is_contaminated & invalid_features))
+    num_no_conta_invalid = int(np.sum(~is_contaminated & invalid_features))
+
+    if num_conta_invalid:
+        logging.info(
+            "Feature computation failed for %i contaminated sample pairs",
+            num_conta_invalid,
+        )
+
+    if num_no_conta_invalid:
+        logging.info(
+            "Feature computation failed for %i non-contaminated sample pairs",
+            num_no_conta_invalid,
+        )
+
+    return (
+        all_features[~invalid_features],
+        is_contaminated[~invalid_features],
+    )
+
+
+def _train_model(
+    features_train: np.ndarray,
+    is_contaminated_train: np.ndarray,
+    ntrees: int,
+    rng_seed: int,
+    nproc: int,
+) -> RandomForestClassifier:
+    """Train a Random Forest classifier."""
+    rf_model = RandomForestClassifier(
+        n_estimators=ntrees,
+        n_jobs=nproc,
+        random_state=rng_seed,
+    )
+
+    start = perf_counter()
+
+    logging.info(
+        "Training Random Forest model with %d trees using %d process%s...",
+        ntrees,
+        nproc,
+        "" if nproc == 1 else "es",
+    )
+
+    rf_model.fit(
+        features_train,
+        is_contaminated_train,
+    )
+
+    logging.info(
+        "Training completed in %.1f seconds",
+        perf_counter() - start,
+    )
+
+    return rf_model
+
+
+def _build_performance_report(
+    rf_model: RandomForestClassifier,
+    features_train: np.ndarray,
+    features_test: np.ndarray,
+    is_contaminated_train: np.ndarray,
+    is_contaminated_test: np.ndarray,
+) -> dict[str, Any]:
+    """Build the model performance report."""
+    pred_is_contaminated_train = rf_model.predict(features_train)
+    pred_is_contaminated_test = rf_model.predict(features_test)
+
+    return {
+        "train": {
+            "classification_report": classification_report(
+                is_contaminated_train,
+                pred_is_contaminated_train,
+                output_dict=True,
+            ),
+        },
+        "test": {
+            "classification_report": classification_report(
+                is_contaminated_test,
+                pred_is_contaminated_test,
+                output_dict=True,
+            ),
+        },
+    }
 
 
 class Defaults:
+    """Default parameters for Random Forest model training."""
+
     TEST_SIZE: Final[float] = 0.3
     NTREES: Final[int] = 100
     RNG_SEED: Final[int] = 0
 
 
 class FeaturesComputerWorker:
+    """Compute contamination features for individual sample pairs."""
 
-    def __init__(self, species_ab_table: pd.DataFrame) -> None:
+    def __init__(
+        self,
+        species_ab_table: pd.DataFrame,
+    ) -> None:
         self.feature_extractor = ContaminationFeatureExtractor(species_ab_table)
 
     def compute_features_sample_pair(
-        self, sample_pair: tuple[str, str]
-    ) -> Optional[np.ndarray]:
+        self,
+        sample_pair: SamplePair,
+    ) -> np.ndarray | None:
+        """Compute features for one sample pair."""
         source, target = sample_pair
 
-        features = self.feature_extractor.extract(source, target)
+        features = self.feature_extractor.extract(
+            source,
+            target,
+        )
 
         if features is None:
             return None
@@ -219,12 +348,14 @@ class FeaturesComputerWorker:
 
 
 class FeaturesComputerDriver:
+    """Compute contamination features using one or more processes."""
+
     DEFAULT_CHUNKSIZE: Final[int] = 50
 
     def __init__(
         self,
         species_ab_table: pd.DataFrame,
-        sample_pairs: list[tuple[str, str]],
+        sample_pairs: list[SamplePair],
         nproc: int = 1,
     ) -> None:
         self.species_ab_table = species_ab_table
@@ -233,9 +364,20 @@ class FeaturesComputerDriver:
         self.nproc = nproc
 
     def compute_all_features(self) -> np.ndarray:
-        worker = FeaturesComputerWorker(self.species_ab_table)
+        """Compute features for all sample pairs."""
+        worker = FeaturesComputerWorker(
+            self.species_ab_table,
+        )
 
-        all_features = np.empty((self.num_sample_pairs, ContaminationFeatures.NUM_FEATURES))
+        # Use NaN to mark sample pairs for which feature extraction failed.
+        # These rows are removed later by _filter_invalid_features().
+        all_features = np.full(
+            (
+                self.num_sample_pairs,
+                ContaminationFeatures.NUM_FEATURES,
+            ),
+            np.nan,
+        )
 
         with Pool(processes=self.nproc) as pool:
             all_tasks = pool.imap(
@@ -243,14 +385,18 @@ class FeaturesComputerDriver:
                 self.sample_pairs,
                 chunksize=self.DEFAULT_CHUNKSIZE,
             )
+
             pbar = tqdm(
                 all_tasks,
                 total=self.num_sample_pairs,
                 leave=False,
-                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} sample pairs processed",
+                bar_format=(
+                    "{l_bar}{bar}| " "{n_fmt}/{total_fmt} sample pairs processed"
+                ),
             )
 
-            for cur_sample_pair_id, cur_sample_pair_features in enumerate(pbar):
-                all_features[cur_sample_pair_id] = cur_sample_pair_features
+            for sample_pair_id, sample_pair_features in enumerate(pbar):
+                if sample_pair_features is not None:
+                    all_features[sample_pair_id] = sample_pair_features
 
         return all_features
