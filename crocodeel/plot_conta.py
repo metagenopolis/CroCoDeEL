@@ -240,7 +240,7 @@ class ContaminationPlotsReport:
                 axs[plot_id].axis("off")
 
         plt.tight_layout()
-        fig.savefig(pdf, format="pdf")
+        pdf.savefig(fig)
         plt.close("all")
 
     def save_to_pdf(self, pdf_fh: BinaryIO) -> None:
