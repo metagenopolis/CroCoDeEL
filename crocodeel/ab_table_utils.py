@@ -1,10 +1,11 @@
 """Utilities for reading and preprocessing species abundance tables."""
 
 import logging
-import sys
 from typing import TextIO, Optional
 import numpy as np
 import pandas as pd
+
+from crocodeel.exceptions import InputDataError
 
 
 def _validate_and_normalize_species_names(species_ab_table: pd.DataFrame) -> None:
@@ -12,12 +13,10 @@ def _validate_and_normalize_species_names(species_ab_table: pd.DataFrame) -> Non
     species_names_type = species_ab_table.index.inferred_type
 
     if species_names_type not in ("integer", "string"):
-        logging.error(
-            "Species names in first column are of the '%s' type "
-            "but should be 'string' or 'integer'",
-            species_names_type,
+        raise InputDataError(
+            "Species names in first column are of the "
+            f"'{species_names_type}' type but should be 'string' or 'integer'"
         )
-        sys.exit(1)
 
     species_ab_table.index = species_ab_table.index.astype(str)
 
@@ -31,11 +30,10 @@ def _check_numeric_abundances(species_ab_table: pd.DataFrame) -> None:
     ]
 
     if bad_format_samples:
-        logging.error(
-            "Species abundance in the following samples is not numeric: %s",
-            " ".join(bad_format_samples),
+        raise InputDataError(
+            "Species abundance in the following samples is not numeric: "
+            + " ".join(bad_format_samples)
         )
-        sys.exit(1)
 
 
 def _check_non_negative_abundances(
@@ -45,11 +43,10 @@ def _check_non_negative_abundances(
     negative_samples = species_ab_table.columns[(species_ab_table < 0).any(axis=0)]
 
     if not negative_samples.empty:
-        logging.error(
-            "The following samples contain negative species abundances: %s",
-            " ".join(negative_samples),
+        raise InputDataError(
+            "The following samples contain negative species abundances: "
+            + " ".join(negative_samples)
         )
-        sys.exit(1)
 
 
 def _check_non_empty_samples(
@@ -59,11 +56,10 @@ def _check_non_empty_samples(
     empty_samples = species_ab_table.columns[species_ab_table.sum(axis=0) <= 0]
 
     if not empty_samples.empty:
-        logging.error(
-            "The following samples have no non-zero species abundances: %s",
-            " ".join(empty_samples),
+        raise InputDataError(
+            "The following samples have no non-zero species abundances: "
+            + " ".join(empty_samples)
         )
-        sys.exit(1)
 
 
 def read(fh: TextIO) -> pd.DataFrame:

@@ -3,7 +3,6 @@
 import json
 import logging
 import re
-import sys
 from multiprocessing import Pool
 from time import perf_counter
 from typing import BinaryIO, Final, TextIO, Any
@@ -20,6 +19,7 @@ from crocodeel.conta_features import (
     ContaminationFeatureExtractor,
     ContaminationFeatures,
 )
+from crocodeel.exceptions import InputDataError
 
 
 SamplePair = tuple[str, str]
@@ -136,13 +136,10 @@ def _reconstruct_sample_pairs(
     ]
 
     if invalid_sample_names:
-        logging.error(
-            "The following sample names do not match the expected pattern '%s': %s",
-            sample_name_pattern.pattern,
-            ", ".join(invalid_sample_names),
+        raise InputDataError(
+            "The following sample names do not match the expected pattern "
+            f"'{sample_name_pattern.pattern}': " + ", ".join(invalid_sample_names)
         )
-        sys.exit(1)
-
     source_samples = [sample for sample in sample_names if "_source_" in sample]
 
     target_samples = [sample for sample in sample_names if "_target_" in sample]
@@ -162,20 +159,22 @@ def _reconstruct_sample_pairs(
         if target_sample.replace("_target_", "_source_") not in source_sample_names
     ]
 
-    if sources_without_targets:
-        logging.error(
-            "The following source samples have no corresponding targets: %s",
-            ", ".join(sources_without_targets),
-        )
-
-    if targets_without_sources:
-        logging.error(
-            "The following target samples have no corresponding sources: %s",
-            ", ".join(targets_without_sources),
-        )
-
     if sources_without_targets or targets_without_sources:
-        sys.exit(1)
+        error_messages = []
+
+        if sources_without_targets:
+            error_messages.append(
+                "source samples without corresponding targets: "
+                + ", ".join(sources_without_targets)
+            )
+
+        if targets_without_sources:
+            error_messages.append(
+                "target samples without corresponding sources: "
+                + ", ".join(targets_without_sources)
+            )
+
+        raise InputDataError("; ".join(error_messages))
 
     return [
         (

@@ -26,6 +26,7 @@ from crocodeel.train_model import (
     Defaults as train_model_defaults,
     run_train_model,
 )
+from crocodeel.exceptions import InputDataError
 
 
 def set_logging() -> None:
@@ -757,31 +758,29 @@ def run_train_model_command(
         )
 
 
-def main() -> None:
+def main() -> int:
     """Run the CroCoDeEL command-line application."""
     set_logging()
     args = get_arguments()
 
-    if args.command == "self_test":
-        SelfTest(args.keep_results).run()
-        return
+    try:
+        if args.command == "self_test":
+            SelfTest(args.keep_results).run()
+        elif args.command == "search_conta":
+            run_search_conta_command(args)
+        elif args.command == "plot_conta":
+            run_plot_conta_command(args)
+        elif args.command == "easy_wf":
+            run_easy_workflow(args)
+        elif args.command == "train_model":
+            run_train_model_command(args)
 
-    if args.command == "search_conta":
-        run_search_conta_command(args)
-        return
+        return 0
 
-    if args.command == "plot_conta":
-        run_plot_conta_command(args)
-        return
-
-    if args.command == "easy_wf":
-        run_easy_workflow(args)
-        return
-
-    if args.command == "train_model":
-        run_train_model_command(args)
-        return
+    except InputDataError as error:
+        logging.error("%s", error)
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

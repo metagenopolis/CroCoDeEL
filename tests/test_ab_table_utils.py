@@ -15,6 +15,7 @@ from crocodeel.ab_table_utils import (
     read_filter_normalize,
     compare_species_names,
 )
+from crocodeel.exceptions import InputDataError
 
 
 def test_read():
@@ -85,7 +86,10 @@ def test_read_filter_normalize_rejects_invalid_species_names():
     table = io.StringIO("species_name\tsample1\n" "0.5\t0.1\n" "0.6\t0.9\n")
     table.name = "species_abundance.tsv"
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(
+        InputDataError,
+        match="should be 'string' or 'integer'",
+    ):
         read_filter_normalize(table)
 
 
@@ -98,7 +102,10 @@ def test_read_filter_normalize_rejects_non_numeric_abundances():
     )
     table.name = "species_abundance.tsv"
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(
+        InputDataError,
+        match="Species abundance in the following samples is not numeric",
+    ):
         read_filter_normalize(table)
 
 
@@ -111,7 +118,10 @@ def test_read_filter_normalize_rejects_negative_abundances():
     )
     table.name = "species_abundance.tsv"
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(
+        InputDataError,
+        match="contain negative species abundances",
+    ):
         read_filter_normalize(table)
 
 
@@ -124,7 +134,10 @@ def test_read_filter_normalize_rejects_empty_samples():
     )
     table.name = "species_abundance.tsv"
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(
+        InputDataError,
+        match="have no non-zero species abundances",
+    ):
         read_filter_normalize(table)
 
 
@@ -315,7 +328,10 @@ def test_read_filter_normalize_rejects_samples_emptied_by_filtering():
     # Minimum abundance = 1.
     # Threshold = 20.
     # Both species are removed.
-    with pytest.raises(SystemExit):
+    with pytest.raises(
+        InputDataError,
+        match="have no non-zero species abundances",
+    ):
         read_filter_normalize(
             table,
             filtering_ab_thr_factor=20,

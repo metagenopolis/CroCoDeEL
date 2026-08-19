@@ -13,6 +13,7 @@ from crocodeel.train_model import (
     _reconstruct_sample_pairs,
     _train_model,
 )
+from crocodeel.exceptions import InputDataError
 
 
 @pytest.fixture
@@ -55,15 +56,16 @@ def test_reconstruct_sample_pairs(
 def test_reconstruct_sample_pairs_rejects_invalid_sample_names(
     training_species_ab_table: pd.DataFrame,
 ) -> None:
-    """Test that invalid sample names cause the process to exit."""
+    """Test that invalid sample names are rejected."""
     training_species_ab_table = training_species_ab_table.rename(
         columns={"conta_source_case_1": "invalid_sample"}
     )
 
-    with pytest.raises(SystemExit) as exc_info:
+    with pytest.raises(
+        InputDataError,
+        match="do not match the expected pattern",
+    ):
         _reconstruct_sample_pairs(training_species_ab_table)
-
-    assert exc_info.value.code == 1
 
 
 def test_reconstruct_sample_pairs_rejects_source_without_target() -> None:
@@ -74,10 +76,11 @@ def test_reconstruct_sample_pairs_rejects_source_without_target() -> None:
         }
     )
 
-    with pytest.raises(SystemExit) as exc_info:
+    with pytest.raises(
+        InputDataError,
+        match="source samples without corresponding targets",
+    ):
         _reconstruct_sample_pairs(species_ab_table)
-
-    assert exc_info.value.code == 1
 
 
 def test_reconstruct_sample_pairs_rejects_target_without_source() -> None:
@@ -88,10 +91,11 @@ def test_reconstruct_sample_pairs_rejects_target_without_source() -> None:
         }
     )
 
-    with pytest.raises(SystemExit) as exc_info:
+    with pytest.raises(
+        InputDataError,
+        match="target samples without corresponding sources",
+    ):
         _reconstruct_sample_pairs(species_ab_table)
-
-    assert exc_info.value.code == 1
 
 
 def test_filter_invalid_features() -> None:
