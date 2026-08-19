@@ -8,6 +8,7 @@ from crocodeel.conta_event import (
     ContaminationEventIO,
     round_conta_rate,
 )
+from crocodeel.exceptions import InputDataError
 
 
 def test_contamination_event_defaults():
@@ -54,7 +55,11 @@ def test_round_conta_rate(rate, expected):
         (0.99999, 4, 1.0),
     ],
 )
-def test_round_conta_rate_significant_digits(rate, significant_digits, expected):
+def test_round_conta_rate_significant_digits(
+    rate,
+    significant_digits,
+    expected,
+):
     """Test rounding with different numbers of significant digits."""
     assert round_conta_rate(rate, significant_digits) == pytest.approx(expected)
 
@@ -86,9 +91,6 @@ def test_read_tsv(caplog):
         "sample1\tsample2\t0.05\t0.99\tspecies1,species2\n"
         "sample3\tsample4\t0.01\t0.85\tspecies3\n"
     )
-
-    # StringIO does not have a useful name attribute, while read_tsv()
-    # uses fh.name for logging.
     tsv.name = "contamination_events.tsv"
 
     with caplog.at_level(logging.INFO):
@@ -129,8 +131,67 @@ def test_read_tsv_skips_comments():
     assert events[0].target == "sample2"
 
 
-def test_read_tsv_empty_species_list():
-    """Test reading an event without contamination-specific species."""
+def test_read_tsv_rejects_missing_columns():
+    """Test that missing required columns are rejected."""
+    tsv = io.StringIO(
+        "source\ttarget\trate\tprobability\n"
+        "sample1\tsample2\t0.05\t0.99\n"
+    )
+    tsv.name = "contamination_events.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match="missing required column.*contamination_specific_species",
+    ):
+        ContaminationEventIO.read_tsv(tsv)
+
+
+def test_read_tsv_rejects_empty_file():
+    """Test that an empty contamination events file is rejected."""
+    tsv = io.StringIO("")
+    tsv.name = "contamination_events.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match="empty or has no header",
+    ):
+        ContaminationEventIO.read_tsv(tsv)
+
+
+def test_read_tsv_rejects_empty_source():
+    """Test that an empty source sample is rejected."""
+    tsv = io.StringIO(
+        "source\ttarget\trate\tprobability\t"
+        "contamination_specific_species\n"
+        "\tsample2\t0.05\t0.99\tspecies1\n"
+    )
+    tsv.name = "contamination_events.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match="Missing source sample",
+    ):
+        ContaminationEventIO.read_tsv(tsv)
+
+
+def test_read_tsv_rejects_empty_target():
+    """Test that an empty target sample is rejected."""
+    tsv = io.StringIO(
+        "source\ttarget\trate\tprobability\t"
+        "contamination_specific_species\n"
+        "sample1\t\t0.05\t0.99\tspecies1\n"
+    )
+    tsv.name = "contamination_events.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match="Missing target sample",
+    ):
+        ContaminationEventIO.read_tsv(tsv)
+
+
+def test_read_tsv_rejects_empty_contamination_specific_species():
+    """Test that empty contamination-specific species are rejected."""
     tsv = io.StringIO(
         "source\ttarget\trate\tprobability\t"
         "contamination_specific_species\n"
@@ -138,10 +199,89 @@ def test_read_tsv_empty_species_list():
     )
     tsv.name = "contamination_events.tsv"
 
-    events = ContaminationEventIO.read_tsv(tsv)
+    with pytest.raises(
+        InputDataError,
+        match="Missing contamination-specific species",
+    ):
+        ContaminationEventIO.read_tsv(tsv)
 
-    assert len(events) == 1
-    assert events[0].conta_line_species == []
+
+@pytest.mark.parametrize(
+    "rate",
+    [
+        -0.1,
+        1.1,
+        float("nan"),
+        float("inf"),
+        -float("inf"),
+    ],
+)
+def test_read_tsv_rejects_invalid_rate(rate):
+    """Test that invalid contamination rates are rejected."""
+    tsv = io.StringIO(
+        "source\ttarget\trate\tprobability\t"
+        "contamination_specific_species\n"
+        f"sample1\tsample2\t{rate}\t0.99\tspecies1\n"
+    )
+    tsv.name = "contamination_events.tsv"
+
+    with pytest.raises(InputDataError):
+        ContaminationEventIO.read_tsv(tsv)
+
+
+def test_read_tsv_rejects_non_numeric_rate():
+    """Test that non-numeric contamination rates are rejected."""
+    tsv = io.StringIO(
+        "source\ttarget\trate\tprobability\t"
+        "contamination_specific_species\n"
+        "sample1\tsample2\tfoo\t0.99\tspecies1\n"
+    )
+    tsv.name = "contamination_events.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match="Invalid rate",
+    ):
+        ContaminationEventIO.read_tsv(tsv)
+
+
+@pytest.mark.parametrize(
+    "probability",
+    [
+        -0.1,
+        1.1,
+        float("nan"),
+        float("inf"),
+        -float("inf"),
+    ],
+)
+def test_read_tsv_rejects_invalid_probability(probability):
+    """Test that invalid contamination probabilities are rejected."""
+    tsv = io.StringIO(
+        "source\ttarget\trate\tprobability\t"
+        "contamination_specific_species\n"
+        f"sample1\tsample2\t0.05\t{probability}\tspecies1\n"
+    )
+    tsv.name = "contamination_events.tsv"
+
+    with pytest.raises(InputDataError):
+        ContaminationEventIO.read_tsv(tsv)
+
+
+def test_read_tsv_rejects_non_numeric_probability():
+    """Test that non-numeric probabilities are rejected."""
+    tsv = io.StringIO(
+        "source\ttarget\trate\tprobability\t"
+        "contamination_specific_species\n"
+        "sample1\tsample2\t0.05\tfoo\tspecies1\n"
+    )
+    tsv.name = "contamination_events.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match="Invalid probability",
+    ):
+        ContaminationEventIO.read_tsv(tsv)
 
 
 def test_write_tsv():
