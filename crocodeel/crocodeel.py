@@ -26,7 +26,7 @@ from crocodeel.train_model import (
     Defaults as train_model_defaults,
     run_train_model,
 )
-from crocodeel.exceptions import InputDataError
+from crocodeel.exceptions import InputDataError, SelfTestError
 
 
 def set_logging() -> None:
@@ -777,7 +777,7 @@ def main() -> int:
 
         return 0
 
-    except InputDataError as error:
+    except (InputDataError, SelfTestError) as error:
         logging.error("%s", error)
         return 1
 

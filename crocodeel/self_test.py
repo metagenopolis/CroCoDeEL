@@ -19,6 +19,7 @@ from crocodeel.search_conta import (
     Defaults as search_conta_defaults,
     run_search_conta,
 )
+from crocodeel.exceptions import SelfTestError
 
 
 class TestData:
@@ -192,7 +193,7 @@ class SelfTest:
             conta_events_fp,
             shallow=False,
         ):
-            raise RuntimeError(
+            raise SelfTestError(
                 "Contamination events found are not those expected."
             )
 
@@ -203,14 +204,14 @@ class SelfTest:
         pdf_report_size = pdf_report_fp.stat().st_size
 
         if pdf_report_size < TestData.MIN_PDF_REPORT_SIZE:
-            raise RuntimeError(
+            raise SelfTestError(
                 "PDF report appears too small: "
                 f"size is {pdf_report_size} bytes "
                 f"(expected around {TestData.EXPECTED_PDF_REPORT_SIZE} bytes)."
             )
 
         if pdf_report_size > TestData.MAX_PDF_REPORT_SIZE:
-            raise RuntimeError(
+            raise SelfTestError(
                 "PDF report appears too large: "
                 f"size is {pdf_report_size} bytes "
                 f"(expected around {TestData.EXPECTED_PDF_REPORT_SIZE} bytes)."

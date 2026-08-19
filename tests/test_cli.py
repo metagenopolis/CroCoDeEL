@@ -16,7 +16,7 @@ from crocodeel.crocodeel import (
     run_easy_workflow,
     writable_file,
 )
-from crocodeel.exceptions import InputDataError
+from crocodeel.exceptions import InputDataError, SelfTestError
 
 
 @pytest.mark.parametrize(
@@ -109,6 +109,38 @@ def test_main_returns_one_on_input_data_error(
 
     assert exit_code == 1
     assert "Invalid input data." in caplog.text
+
+
+def test_main_returns_one_on_self_test_error(
+    monkeypatch,
+    caplog,
+):
+    """Test that a self-test error results in exit code 1."""
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.set_logging",
+        lambda: None,
+    )
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.get_arguments",
+        lambda: argparse.Namespace(
+            command="self_test",
+            keep_results=False,
+        ),
+    )
+
+    def raise_self_test_error(self):
+        raise SelfTestError("Self-test failed.")
+
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.SelfTest.run",
+        raise_self_test_error,
+    )
+
+    with caplog.at_level(logging.ERROR):
+        exit_code = main()
+
+    assert exit_code == 1
+    assert "Self-test failed." in caplog.text
 
 
 # ---------------------------------------------------------------------------

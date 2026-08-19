@@ -3,6 +3,7 @@
 import pytest
 
 from crocodeel.self_test import TestData, SelfTest
+from crocodeel.exceptions import SelfTestError
 
 
 def test_load_test_data():
@@ -44,7 +45,7 @@ def test_check_results_rejects_different_contamination_events(tmp_path):
     )
 
     with pytest.raises(
-        RuntimeError,
+        SelfTestError,
         match="Contamination events found are not those expected",
     ):
         SelfTest._check_results(
@@ -66,7 +67,7 @@ def test_check_results_rejects_pdf_that_is_too_small(tmp_path):
     )
 
     with pytest.raises(
-        RuntimeError,
+        SelfTestError,
         match="PDF report appears too small",
     ):
         SelfTest._check_results(
@@ -88,7 +89,7 @@ def test_check_results_rejects_pdf_that_is_too_large(tmp_path):
     )
 
     with pytest.raises(
-        RuntimeError,
+        SelfTestError,
         match="PDF report appears too large",
     ):
         SelfTest._check_results(
