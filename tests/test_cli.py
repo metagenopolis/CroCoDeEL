@@ -1,6 +1,7 @@
 """Unit tests for the CroCoDeEL command-line interface."""
 
 import argparse
+import logging
 
 import pytest
 
