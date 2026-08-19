@@ -26,6 +26,6 @@ authors:
     email: guillaume.gautreau@inrae.fr
     affiliation: INRAE
 title: "CroCoDeEL: Cross-sample Contamination Detection and Estimation of its Level"
-version: 1.2.2
+version: 1.3.0
 doi: 10.1101/2025.01.15.633153
-date-released: 2026-05-26
+date-released: 2026-08-19
