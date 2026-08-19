@@ -5,6 +5,7 @@ import argparse
 import pytest
 
 from crocodeel.crocodeel import (
+    main,
     bounded_float_01,
     get_arguments,
     nproc,
@@ -14,6 +15,99 @@ from crocodeel.crocodeel import (
     run_easy_workflow,
     writable_file,
 )
+from crocodeel.exceptions import InputDataError
+
+
+@pytest.mark.parametrize(
+    "command, function_name",
+    [
+        ("search_conta", "run_search_conta_command"),
+        ("plot_conta", "run_plot_conta_command"),
+        ("easy_wf", "run_easy_workflow"),
+        ("train_model", "run_train_model_command"),
+    ],
+)
+def test_main_dispatches_command(
+    monkeypatch,
+    command,
+    function_name,
+):
+    """Test that each CLI command is dispatched to the correct function."""
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.set_logging",
+        lambda: None,
+    )
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.get_arguments",
+        lambda: argparse.Namespace(command=command),
+    )
+
+    called = False
+
+    def fake_command(args):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(
+        f"crocodeel.crocodeel.{function_name}",
+        fake_command,
+    )
+
+    assert main() == 0
+    assert called
+
+
+def test_main_returns_zero_on_success(monkeypatch):
+    """Test that main returns zero when the command succeeds."""
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.set_logging",
+        lambda: None,
+    )
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.get_arguments",
+        lambda: argparse.Namespace(
+            command="self_test",
+            keep_results=False,
+        ),
+    )
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.SelfTest.run",
+        lambda self: None,
+    )
+
+    assert main() == 0
+
+
+def test_main_returns_one_on_input_data_error(
+    monkeypatch,
+    caplog,
+):
+    """Test that input data errors result in exit code 1."""
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.set_logging",
+        lambda: None,
+    )
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.get_arguments",
+        lambda: argparse.Namespace(
+            command="self_test",
+            keep_results=False,
+        ),
+    )
+
+    def raise_input_data_error(self):
+        raise InputDataError("Invalid input data.")
+
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.SelfTest.run",
+        raise_input_data_error,
+    )
+
+    with caplog.at_level(logging.ERROR):
+        exit_code = main()
+
+    assert exit_code == 1
+    assert "Invalid input data." in caplog.text
 
 
 # ---------------------------------------------------------------------------
@@ -155,6 +249,7 @@ def test_positive_int_valid(value, expected):
     """Test that positive integers are accepted."""
     assert positive_int(value) == expected
 
+
 @pytest.mark.parametrize(
     "value",
     [
@@ -186,6 +281,7 @@ def test_positive_int_invalid(value):
         match=f"{value} is not an integer",
     ):
         positive_int(value)
+
 
 @pytest.mark.parametrize(
     "value",
