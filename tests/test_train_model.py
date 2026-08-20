@@ -9,17 +9,12 @@ from sklearn.ensemble import RandomForestClassifier
 
 from crocodeel.conta_features import ContaminationFeatures
 from crocodeel.exceptions import InputDataError
-from crocodeel.train_model import (
-    FeaturesComputerDriver,
-    FeaturesComputerWorker,
-    _build_performance_report,
-    _compute_features,
-    _filter_invalid_features,
-    _reconstruct_sample_pairs,
-    _train_model,
-    run_train_model,
-)
-
+from crocodeel.train_model import (FeaturesComputerDriver,
+                                   FeaturesComputerWorker,
+                                   _build_performance_report,
+                                   _compute_features, _filter_invalid_features,
+                                   _reconstruct_sample_pairs, _train_model,
+                                   run_train_model)
 
 # ---------------------------------------------------------------------------
 # Fixtures

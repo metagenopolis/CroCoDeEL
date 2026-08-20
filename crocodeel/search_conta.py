@@ -1,27 +1,25 @@
 """Search for cross-sample contamination in metagenomic abundance data."""
 
+import importlib.resources
+import logging
+import warnings
 from itertools import product
 from multiprocessing import Pool
 from pathlib import Path
 from time import perf_counter
 from typing import BinaryIO, Final, Iterator
-import importlib.resources
-import logging
-import warnings
 
 import joblib
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.exceptions import InconsistentVersionWarning  # type: ignore[attr-defined]
+from sklearn.exceptions import \
+    InconsistentVersionWarning  # type: ignore[attr-defined]
 from tqdm import tqdm
 
 from crocodeel.conta_event import ContaminationEvent
-from crocodeel.conta_features import (
-    ContaminationFeatureExtractor,
-    ContaminationFeatures,
-)
-
+from crocodeel.conta_features import (ContaminationFeatureExtractor,
+                                      ContaminationFeatures)
 
 SamplePair = tuple[str, str]
 

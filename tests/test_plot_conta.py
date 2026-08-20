@@ -1,7 +1,7 @@
 """Unit tests for contamination plotting."""
 
-from io import BytesIO
 import logging
+from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import matplotlib.pyplot as plt
@@ -11,7 +11,6 @@ import pytest
 
 from crocodeel.conta_event import ContaminationEvent
 from crocodeel.plot_conta import ContaminationPlotsReport, run_plot_conta
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -1,10 +1,10 @@
 """Store metadata describing a CroCoDeEL execution."""
 
-from socket import gethostname
-from getpass import getuser
 from datetime import datetime
+from getpass import getuser
 from importlib.metadata import version
 from pathlib import Path
+from socket import gethostname
 from typing import Optional
 
 

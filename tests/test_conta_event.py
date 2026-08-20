@@ -5,13 +5,9 @@ import logging
 
 import pytest
 
-from crocodeel.conta_event import (
-    ContaminationEvent,
-    ContaminationEventIO,
-    round_conta_rate,
-)
+from crocodeel.conta_event import (ContaminationEvent, ContaminationEventIO,
+                                   round_conta_rate)
 from crocodeel.exceptions import InputDataError
-
 
 # ---------------------------------------------------------------------------
 # ContaminationEvent

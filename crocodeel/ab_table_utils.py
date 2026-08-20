@@ -1,7 +1,8 @@
 """Utilities for reading and preprocessing species abundance tables."""
 
 import logging
-from typing import TextIO, Optional
+from typing import Optional, TextIO
+
 import numpy as np
 import pandas as pd
 

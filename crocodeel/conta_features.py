@@ -1,12 +1,12 @@
 """Extract features used to detect cross-sample contamination."""
 
-from typing import Final, ClassVar, Optional
 from dataclasses import dataclass
+from typing import ClassVar, Final, Optional
 
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.linear_model import RANSACRegressor
-from sklearn.base import RegressorMixin, BaseEstimator
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import NearestNeighbors
 

@@ -3,7 +3,7 @@
 import csv
 import logging
 from dataclasses import dataclass, field
-from typing import Sequence, Final, TextIO
+from typing import Final, Sequence, TextIO
 
 import numpy as np
 

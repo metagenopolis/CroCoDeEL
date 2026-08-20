@@ -12,7 +12,6 @@ from crocodeel.plot_conta import Defaults as plot_conta_defaults
 from crocodeel.search_conta import Defaults as search_conta_defaults
 from crocodeel.self_test import SelfTest, TestData
 
-
 # ---------------------------------------------------------------------------
 # Test data loading
 # ---------------------------------------------------------------------------

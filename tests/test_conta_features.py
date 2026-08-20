@@ -2,11 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from crocodeel.conta_features import (
-    ContaminationFeatureExtractor,
-    _UnitSlopeRegression,
-)
-
+from crocodeel.conta_features import (ContaminationFeatureExtractor,
+                                      _UnitSlopeRegression)
 
 # ---------------------------------------------------------------------------
 # _UnitSlopeRegression

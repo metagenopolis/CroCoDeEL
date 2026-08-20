@@ -5,7 +5,7 @@ import logging
 import re
 from multiprocessing import Pool
 from time import perf_counter
-from typing import BinaryIO, Final, TextIO, Any
+from typing import Any, BinaryIO, Final, TextIO
 
 import joblib
 import numpy as np
@@ -15,12 +15,9 @@ from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-from crocodeel.conta_features import (
-    ContaminationFeatureExtractor,
-    ContaminationFeatures,
-)
+from crocodeel.conta_features import (ContaminationFeatureExtractor,
+                                      ContaminationFeatures)
 from crocodeel.exceptions import InputDataError
-
 
 SamplePair = tuple[str, str]
 

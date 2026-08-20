@@ -5,7 +5,6 @@ from pathlib import Path
 
 from crocodeel.execution_description import ExecutionDescription
 
-
 # ---------------------------------------------------------------------------
 # ExecutionDescription.__str__()
 # ---------------------------------------------------------------------------

@@ -7,16 +7,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from crocodeel.ab_table_utils import (
-    compare_species_names,
-    filter_low_ab,
-    log_transform,
-    normalize,
-    read,
-    read_filter_normalize,
-)
+from crocodeel.ab_table_utils import (compare_species_names, filter_low_ab,
+                                      log_transform, normalize, read,
+                                      read_filter_normalize)
 from crocodeel.exceptions import InputDataError
-
 
 # ---------------------------------------------------------------------------
 # read()

@@ -11,15 +11,11 @@ import pandas as pd
 
 from crocodeel import ab_table_utils
 from crocodeel.conta_event import ContaminationEventIO
-from crocodeel.plot_conta import (
-    Defaults as plot_conta_defaults,
-    run_plot_conta,
-)
-from crocodeel.search_conta import (
-    Defaults as search_conta_defaults,
-    run_search_conta,
-)
 from crocodeel.exceptions import SelfTestError
+from crocodeel.plot_conta import Defaults as plot_conta_defaults
+from crocodeel.plot_conta import run_plot_conta
+from crocodeel.search_conta import Defaults as search_conta_defaults
+from crocodeel.search_conta import run_search_conta
 
 
 class TestData:

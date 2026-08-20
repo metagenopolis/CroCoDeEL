@@ -8,28 +8,16 @@ import pandas as pd
 import pytest
 
 from crocodeel.conta_event import ContaminationEvent
-from crocodeel.crocodeel import (
-    bounded_float_01,
-    generate_pdf_report,
-    get_arguments,
-    load_abundance_tables,
-    load_contamination_events,
-    log_contamination_warnings,
-    main,
-    nproc,
-    positive_float,
-    positive_int,
-    readable_file,
-    run_easy_workflow,
-    run_plot_conta_command,
-    run_search,
-    run_search_conta_command,
-    run_train_model_command,
-    set_logging,
-    writable_file,
-)
+from crocodeel.crocodeel import (bounded_float_01, generate_pdf_report,
+                                 get_arguments, load_abundance_tables,
+                                 load_contamination_events,
+                                 log_contamination_warnings, main, nproc,
+                                 positive_float, positive_int, readable_file,
+                                 run_easy_workflow, run_plot_conta_command,
+                                 run_search, run_search_conta_command,
+                                 run_train_model_command, set_logging,
+                                 writable_file)
 from crocodeel.exceptions import InputDataError, SelfTestError
-
 
 # ---------------------------------------------------------------------------
 # main()

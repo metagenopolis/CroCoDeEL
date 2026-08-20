@@ -11,17 +11,11 @@ from sklearn.ensemble import RandomForestClassifier
 
 from crocodeel.conta_event import ContaminationEvent
 from crocodeel.conta_features import ContaminationFeatureExtractor
-from crocodeel.search_conta import (
-    ContaminationSearcherDriver,
-    ContaminationSearcherWorker,
-    Defaults,
-    _load_rf_model,
-    _log_search_results,
-    _passes_cutoffs,
-    _prepare_search,
-    run_search_conta,
-)
-
+from crocodeel.search_conta import (ContaminationSearcherDriver,
+                                    ContaminationSearcherWorker, Defaults,
+                                    _load_rf_model, _log_search_results,
+                                    _passes_cutoffs, _prepare_search,
+                                    run_search_conta)
 
 # ---------------------------------------------------------------------------
 # Fixtures

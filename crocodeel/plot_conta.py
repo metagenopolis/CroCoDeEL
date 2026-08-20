@@ -1,8 +1,8 @@
 """Generate PDF reports for detected cross-sample contamination."""
 
-from typing import BinaryIO, Final, Optional
 import logging
 from time import perf_counter
+from typing import BinaryIO, Final, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,8 +11,7 @@ from matplotlib.axes import Axes
 from matplotlib.backends.backend_pdf import PdfPages
 from tqdm import tqdm
 
-from crocodeel.conta_event import ContaminationEvent
-from crocodeel.conta_event import round_conta_rate
+from crocodeel.conta_event import ContaminationEvent, round_conta_rate
 
 
 def run_plot_conta(
