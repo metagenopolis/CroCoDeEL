@@ -372,7 +372,6 @@ def test_log_search_results_empty(caplog: pytest.LogCaptureFixture) -> None:
 
 def test_run_search_conta(
     species_ab_table: pd.DataFrame,
-    conta_event: ContaminationEvent,
 ) -> None:
     """Test the contamination search orchestration."""
     rf_model = MagicMock()
@@ -384,6 +383,14 @@ def test_run_search_conta(
         ]
     )
     num_sample_pairs = 1
+
+    low_rate_event = ContaminationEvent(
+        source="source1",
+        target="target1",
+        rate=0.1,
+        probability=0.8,
+        conta_line_species=[],
+    )
 
     high_rate_event = ContaminationEvent(
         source="source2",
@@ -397,7 +404,7 @@ def test_run_search_conta(
     # sorts them by decreasing contamination rate.
     driver = MagicMock()
     driver.search_contamination.return_value = [
-        conta_event,
+        low_rate_event,
         high_rate_event,
     ]
 
@@ -437,7 +444,9 @@ def test_run_search_conta(
             nproc=2,
         )
 
-    mock_load_rf_model.assert_called_once_with(rf_model_fh)
+    mock_load_rf_model.assert_called_once_with(
+        rf_model_fh,
+    )
 
     mock_prepare_search.assert_called_once_with(
         species_ab_table,
@@ -456,15 +465,15 @@ def test_run_search_conta(
 
     driver.search_contamination.assert_called_once_with()
 
-    # Logging happens before the events are sorted.
+    # Logging happens after sorting, so logged events follow the return order.
     mock_log_results.assert_called_once_with(
-        [high_rate_event, conta_event],
+        [high_rate_event, low_rate_event],
     )
 
     # The returned events are sorted by decreasing contamination rate.
     assert result == [
         high_rate_event,
-        conta_event,
+        low_rate_event,
     ]
 
 
