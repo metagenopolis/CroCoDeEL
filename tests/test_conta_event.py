@@ -1,3 +1,5 @@
+"""Unit tests for contamination events and TSV I/O."""
+
 import io
 import logging
 
@@ -11,7 +13,12 @@ from crocodeel.conta_event import (
 from crocodeel.exceptions import InputDataError
 
 
-def test_contamination_event_defaults():
+# ---------------------------------------------------------------------------
+# ContaminationEvent
+# ---------------------------------------------------------------------------
+
+
+def test_contamination_event_defaults() -> None:
     """Test default values of a contamination event."""
     event = ContaminationEvent(
         source="source",
@@ -25,6 +32,16 @@ def test_contamination_event_defaults():
     assert not event.conta_line_species
 
 
+# ---------------------------------------------------------------------------
+# round_conta_rate()
+# ---------------------------------------------------------------------------
+
+
+def test_round_conta_rate_zero() -> None:
+    """Test that zero is returned unchanged."""
+    assert round_conta_rate(0) == 0
+
+
 @pytest.mark.parametrize(
     "rate, expected",
     [
@@ -36,7 +53,10 @@ def test_contamination_event_defaults():
         (0.9999, 1.00),
     ],
 )
-def test_round_conta_rate(rate, expected):
+def test_round_conta_rate(
+    rate: float,
+    expected: float,
+) -> None:
     """Test rounding contamination rates to three significant digits."""
     assert round_conta_rate(rate) == pytest.approx(expected)
 
@@ -56,12 +76,15 @@ def test_round_conta_rate(rate, expected):
     ],
 )
 def test_round_conta_rate_significant_digits(
-    rate,
-    significant_digits,
-    expected,
-):
+    rate: float,
+    significant_digits: int,
+    expected: float,
+) -> None:
     """Test rounding with different numbers of significant digits."""
-    assert round_conta_rate(rate, significant_digits) == pytest.approx(expected)
+    assert round_conta_rate(
+        rate,
+        significant_digits,
+    ) == pytest.approx(expected)
 
 
 @pytest.mark.parametrize(
@@ -73,17 +96,20 @@ def test_round_conta_rate_significant_digits(
         (0.9999, 1.0),
     ],
 )
-def test_round_conta_rate_magnitude_boundaries(rate, expected):
+def test_round_conta_rate_magnitude_boundaries(
+    rate: float,
+    expected: float,
+) -> None:
     """Test rounding across orders of magnitude."""
     assert round_conta_rate(rate) == pytest.approx(expected)
 
 
-def test_round_conta_rate_zero():
-    """Test that zero is returned unchanged."""
-    assert round_conta_rate(0) == 0
+# ---------------------------------------------------------------------------
+# ContaminationEventIO.read_tsv()
+# ---------------------------------------------------------------------------
 
 
-def test_read_tsv(caplog):
+def test_read_tsv(caplog: pytest.LogCaptureFixture) -> None:
     """Test reading contamination events from a TSV file."""
     tsv = io.StringIO(
         "source\ttarget\trate\tprobability\t"
@@ -102,7 +128,10 @@ def test_read_tsv(caplog):
     assert events[0].target == "sample2"
     assert events[0].rate == pytest.approx(0.05)
     assert events[0].probability == pytest.approx(0.99)
-    assert events[0].conta_line_species == ["species1", "species2"]
+    assert events[0].conta_line_species == [
+        "species1",
+        "species2",
+    ]
 
     assert events[1].source == "sample3"
     assert events[1].target == "sample4"
@@ -113,7 +142,7 @@ def test_read_tsv(caplog):
     assert "2 contamination events loaded" in caplog.text
 
 
-def test_read_tsv_skips_comments():
+def test_read_tsv_skips_comments() -> None:
     """Test that comment lines are ignored when reading a TSV."""
     tsv = io.StringIO(
         "# CroCoDeEL contamination events\n"
@@ -131,7 +160,19 @@ def test_read_tsv_skips_comments():
     assert events[0].target == "sample2"
 
 
-def test_read_tsv_rejects_missing_columns():
+def test_read_tsv_rejects_empty_file() -> None:
+    """Test that an empty contamination events file is rejected."""
+    tsv = io.StringIO("")
+    tsv.name = "contamination_events.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match="empty or has no header",
+    ):
+        ContaminationEventIO.read_tsv(tsv)
+
+
+def test_read_tsv_rejects_missing_columns() -> None:
     """Test that missing required columns are rejected."""
     tsv = io.StringIO(
         "source\ttarget\trate\tprobability\n"
@@ -146,19 +187,7 @@ def test_read_tsv_rejects_missing_columns():
         ContaminationEventIO.read_tsv(tsv)
 
 
-def test_read_tsv_rejects_empty_file():
-    """Test that an empty contamination events file is rejected."""
-    tsv = io.StringIO("")
-    tsv.name = "contamination_events.tsv"
-
-    with pytest.raises(
-        InputDataError,
-        match="empty or has no header",
-    ):
-        ContaminationEventIO.read_tsv(tsv)
-
-
-def test_read_tsv_rejects_empty_source():
+def test_read_tsv_rejects_empty_source() -> None:
     """Test that an empty source sample is rejected."""
     tsv = io.StringIO(
         "source\ttarget\trate\tprobability\t"
@@ -174,7 +203,7 @@ def test_read_tsv_rejects_empty_source():
         ContaminationEventIO.read_tsv(tsv)
 
 
-def test_read_tsv_rejects_empty_target():
+def test_read_tsv_rejects_empty_target() -> None:
     """Test that an empty target sample is rejected."""
     tsv = io.StringIO(
         "source\ttarget\trate\tprobability\t"
@@ -190,7 +219,7 @@ def test_read_tsv_rejects_empty_target():
         ContaminationEventIO.read_tsv(tsv)
 
 
-def test_read_tsv_rejects_empty_contamination_specific_species():
+def test_read_tsv_rejects_empty_contamination_specific_species() -> None:
     """Test that empty contamination-specific species are rejected."""
     tsv = io.StringIO(
         "source\ttarget\trate\tprobability\t"
@@ -216,7 +245,7 @@ def test_read_tsv_rejects_empty_contamination_specific_species():
         -float("inf"),
     ],
 )
-def test_read_tsv_rejects_invalid_rate(rate):
+def test_read_tsv_rejects_invalid_rate(rate: float) -> None:
     """Test that invalid contamination rates are rejected."""
     tsv = io.StringIO(
         "source\ttarget\trate\tprobability\t"
@@ -229,7 +258,7 @@ def test_read_tsv_rejects_invalid_rate(rate):
         ContaminationEventIO.read_tsv(tsv)
 
 
-def test_read_tsv_rejects_non_numeric_rate():
+def test_read_tsv_rejects_non_numeric_rate() -> None:
     """Test that non-numeric contamination rates are rejected."""
     tsv = io.StringIO(
         "source\ttarget\trate\tprobability\t"
@@ -255,7 +284,9 @@ def test_read_tsv_rejects_non_numeric_rate():
         -float("inf"),
     ],
 )
-def test_read_tsv_rejects_invalid_probability(probability):
+def test_read_tsv_rejects_invalid_probability(
+    probability: float,
+) -> None:
     """Test that invalid contamination probabilities are rejected."""
     tsv = io.StringIO(
         "source\ttarget\trate\tprobability\t"
@@ -268,7 +299,7 @@ def test_read_tsv_rejects_invalid_probability(probability):
         ContaminationEventIO.read_tsv(tsv)
 
 
-def test_read_tsv_rejects_non_numeric_probability():
+def test_read_tsv_rejects_non_numeric_probability() -> None:
     """Test that non-numeric probabilities are rejected."""
     tsv = io.StringIO(
         "source\ttarget\trate\tprobability\t"
@@ -284,7 +315,12 @@ def test_read_tsv_rejects_non_numeric_probability():
         ContaminationEventIO.read_tsv(tsv)
 
 
-def test_write_tsv():
+# ---------------------------------------------------------------------------
+# ContaminationEventIO.write_tsv()
+# ---------------------------------------------------------------------------
+
+
+def test_write_tsv() -> None:
     """Test writing contamination events to TSV."""
     events = [
         ContaminationEvent(
@@ -306,7 +342,10 @@ def test_write_tsv():
     output = io.StringIO()
     output.name = "contamination_events.tsv"
 
-    ContaminationEventIO.write_tsv(events, output)
+    ContaminationEventIO.write_tsv(
+        events,
+        output,
+    )
 
     assert output.getvalue() == (
         "source\ttarget\trate\tprobability\t"
@@ -316,8 +355,10 @@ def test_write_tsv():
     )
 
 
-def test_tsv_round_trip():
-    """Test that events can be written and read back."""
+# The round-trip test intentionally exercises both serialization and
+# deserialization together.
+def test_tsv_round_trip() -> None:
+    """Test that events can be written and read back unchanged."""
     events = [
         ContaminationEvent(
             source="sample1",
@@ -338,7 +379,10 @@ def test_tsv_round_trip():
     output = io.StringIO()
     output.name = "contamination_events.tsv"
 
-    ContaminationEventIO.write_tsv(events, output)
+    ContaminationEventIO.write_tsv(
+        events,
+        output,
+    )
 
     output.seek(0)
 
