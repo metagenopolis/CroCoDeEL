@@ -3,3 +3,4 @@ __py_cache__
 .python-version
 dist/
 .vscode/
+.coverage
