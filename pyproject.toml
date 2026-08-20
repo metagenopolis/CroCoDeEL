@@ -50,8 +50,6 @@ pylint = "^4.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^9.1.1"
-
-[tool.poetry.group.dev.dependencies]
 pytest-cov = "^7.1.0"
 
 [tool.pytest.ini_options]

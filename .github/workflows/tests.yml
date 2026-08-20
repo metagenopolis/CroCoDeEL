@@ -31,7 +31,13 @@ jobs:
         run: poetry install --with test
 
       - name: Run tests
-        run: poetry run pytest -v
+        run: poetry run pytest -v --cov=crocodeel --cov-report=xml
 
       - name: Run installation test
         run: poetry run crocodeel self_test
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
