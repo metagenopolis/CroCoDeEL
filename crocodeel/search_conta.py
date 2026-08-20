@@ -67,12 +67,12 @@ def run_search_conta(
         perf_counter() - start,
     )
 
-    _log_search_results(conta_events)
-
     conta_events.sort(
         key=lambda event: event.rate,
         reverse=True,
     )
+
+    _log_search_results(conta_events)
 
     return conta_events
 
