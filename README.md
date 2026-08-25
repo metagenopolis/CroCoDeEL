@@ -1,7 +1,8 @@
-#  CroCoDeEL: Cross-sample Contamination Detection and Estimation of its Level 🐊
+# CroCoDeEL: Cross-sample Contamination Detection and Estimation of its Level 🐊
 
 [![install with conda](https://img.shields.io/conda/vn/bioconda/crocodeel?color=green&label=bioconda%2Fcrocodeel&logo=anaconda)](https://anaconda.org/bioconda/crocodeel)
 [![PyPI](https://img.shields.io/pypi/v/crocodeel?label=pypi%20package)](https://pypi.org/project/crocodeel/)
+[![Tests](https://github.com/metagenopolis/CroCoDeEL/actions/workflows/tests.yml/badge.svg)](https://github.com/metagenopolis/CroCoDeEL/actions/workflows/tests.yml)
 [![codecov](https://codecov.io/github/metagenopolis/CroCoDeEL/graph/badge.svg?token=t1nboECgvT)](https://codecov.io/github/metagenopolis/CroCoDeEL)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14708154.svg)](https://doi.org/10.5281/zenodo.14708154)
 
@@ -151,7 +152,7 @@ crocodeel train_model -s training_dataset.meteor.tsv -m crocodeel_model.joblib -
 ```
 Finally, to use your trained model instead of the default one, pass it with the _-m_ option:  
 ```
-crocodeel search_conta -s species_ab.tsv -m crocodeel_model.tsv -c conta_events.tsv
+crocodeel search_conta -s species_ab.tsv -m crocodeel_model.joblib -c conta_events.tsv
 ```
 
 ## Citation
