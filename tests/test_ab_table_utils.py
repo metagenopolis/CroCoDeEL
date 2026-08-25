@@ -340,6 +340,42 @@ def test_read_filter_normalize_rejects_non_numeric_abundances() -> None:
         read_filter_normalize(table)
 
 
+def test_read_filter_normalize_rejects_missing_abundances() -> None:
+    """Test that missing (blank) abundances are rejected."""
+    table = io.StringIO(
+        "species_name\tsample1\tsample2\n"
+        "species_1\t0.1\t\n"
+        "species_2\t0.9\t0.2\n"
+    )
+    table.name = "species_abundance.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match="contain missing species abundances",
+    ):
+        read_filter_normalize(table)
+
+
+def test_read_filter_normalize_rejects_na_like_abundances() -> None:
+    """Test that NA-like string abundances (e.g. 'NA') are rejected.
+
+    pandas converts these to NaN while reading the TSV, so this exercises
+    the same code path as an actually blank cell.
+    """
+    table = io.StringIO(
+        "species_name\tsample1\tsample2\n"
+        "species_1\t0.1\tNA\n"
+        "species_2\t0.9\t0.2\n"
+    )
+    table.name = "species_abundance.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match="contain missing species abundances",
+    ):
+        read_filter_normalize(table)
+
+
 def test_read_filter_normalize_rejects_negative_abundances() -> None:
     """Test that negative abundances are rejected."""
     table = io.StringIO(

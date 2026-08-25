@@ -50,6 +50,21 @@ def _check_non_negative_abundances(
         )
 
 
+def _check_no_missing_abundances(
+    species_ab_table: pd.DataFrame,
+) -> None:
+    """Check that species abundances contain no missing (NA) values."""
+    samples_with_missing_values = species_ab_table.columns[
+        species_ab_table.isna().any(axis=0)
+    ]
+
+    if not samples_with_missing_values.empty:
+        raise InputDataError(
+            "The following samples contain missing species abundances: "
+            + " ".join(samples_with_missing_values)
+        )
+
+
 def _check_non_empty_samples(
     species_ab_table: pd.DataFrame,
 ) -> None:
@@ -123,6 +138,7 @@ def read_filter_normalize(
     species_ab_table = read(fh)
     _validate_and_normalize_species_names(species_ab_table)
     _check_numeric_abundances(species_ab_table)
+    _check_no_missing_abundances(species_ab_table)
     _check_non_negative_abundances(species_ab_table)
     _check_non_empty_samples(species_ab_table)
 
