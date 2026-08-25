@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 from sklearn.ensemble import RandomForestClassifier
 
+import crocodeel.train_model as train_model
 from crocodeel.conta_features import ContaminationFeatures
 from crocodeel.exceptions import InputDataError
 from crocodeel.train_model import (FeaturesComputerDriver,
@@ -452,7 +453,6 @@ def test_features_computer_driver() -> None:
         + 10
     )
 
-    worker = MagicMock()
     pool = MagicMock()
     pool.__enter__.return_value = pool
     pool.imap.return_value = [
@@ -462,10 +462,6 @@ def test_features_computer_driver() -> None:
     ]
 
     with (
-        patch(
-            "crocodeel.train_model.FeaturesComputerWorker",
-            return_value=worker,
-        ) as mock_worker,
         patch(
             "crocodeel.train_model.Pool",
             return_value=pool,
@@ -483,16 +479,14 @@ def test_features_computer_driver() -> None:
 
         result = driver.compute_all_features()
 
-    mock_worker.assert_called_once_with(
-        species_ab_table,
-    )
-
     mock_pool.assert_called_once_with(
         processes=2,
+        initializer=train_model._init_worker,
+        initargs=(species_ab_table,),
     )
 
     pool.imap.assert_called_once_with(
-        worker.compute_features_sample_pair,
+        train_model._compute_features_sample_pair,
         sample_pairs,
         chunksize=FeaturesComputerDriver.DEFAULT_CHUNKSIZE,
     )
@@ -511,6 +505,43 @@ def test_features_computer_driver() -> None:
         result[2],
         features_2,
     )
+
+
+# ---------------------------------------------------------------------------
+# _init_worker() and _compute_features_sample_pair()
+# ---------------------------------------------------------------------------
+
+
+def test_init_worker_builds_module_level_worker(
+    training_species_ab_table: pd.DataFrame,
+) -> None:
+    """Test that _init_worker builds the module-level worker."""
+    train_model._init_worker(training_species_ab_table)
+
+    assert isinstance(
+        train_model._worker,
+        FeaturesComputerWorker,
+    )
+
+
+def test_compute_features_sample_pair_delegates_to_module_level_worker(
+    training_species_ab_table: pd.DataFrame,
+) -> None:
+    """Test that _compute_features_sample_pair delegates to the module-level worker."""
+    train_model._init_worker(training_species_ab_table)
+
+    train_model._worker.feature_extractor.extract = (
+        lambda source, target: None
+    )
+
+    result = train_model._compute_features_sample_pair(
+        (
+            "conta_source_case_1",
+            "conta_target_case_1",
+        )
+    )
+
+    assert result is None
 
 
 # ---------------------------------------------------------------------------

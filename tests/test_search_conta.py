@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 from sklearn.ensemble import RandomForestClassifier
 
+import crocodeel.search_conta as search_conta
 from crocodeel.conta_event import ContaminationEvent
 from crocodeel.conta_features import ContaminationFeatureExtractor
 from crocodeel.search_conta import (ContaminationSearcherDriver,
@@ -641,7 +642,11 @@ def test_contamination_searcher_driver_search_contamination(
 
     assert result == [valid_event]
 
-    mock_pool.assert_called_once_with(processes=2)
+    mock_pool.assert_called_once_with(
+        processes=2,
+        initializer=search_conta._init_worker,
+        initargs=(species_ab_table, rf_model),
+    )
 
     mock_tqdm.assert_called_once()
     assert mock_tqdm.call_args.kwargs["total"] == 3
@@ -650,3 +655,40 @@ def test_contamination_searcher_driver_search_contamination(
     pbar.set_postfix_str.assert_called_once_with(
         "1 conta events found",
     )
+
+
+# ---------------------------------------------------------------------------
+# _init_worker() and _classify_sample_pair()
+# ---------------------------------------------------------------------------
+
+
+def test_init_worker_builds_module_level_worker(
+    species_ab_table: pd.DataFrame,
+) -> None:
+    """Test that _init_worker builds the module-level worker."""
+    classifier = MagicMock()
+
+    search_conta._init_worker(species_ab_table, classifier)
+
+    assert isinstance(
+        search_conta._worker,
+        ContaminationSearcherWorker,
+    )
+    assert search_conta._worker.rf_classifier is classifier
+
+
+def test_classify_sample_pair_delegates_to_module_level_worker(
+    species_ab_table: pd.DataFrame,
+) -> None:
+    """Test that _classify_sample_pair delegates to the module-level worker."""
+    classifier = MagicMock()
+
+    search_conta._init_worker(species_ab_table, classifier)
+
+    # Same sample on both sides always returns None, regardless of the
+    # classifier - this is enough to confirm delegation to the worker
+    # built by _init_worker() without duplicating the more thorough
+    # ContaminationSearcherWorker tests above.
+    result = search_conta._classify_sample_pair(("sample1", "sample1"))
+
+    assert result is None
