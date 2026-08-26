@@ -67,9 +67,10 @@ def run_search_conta(
         perf_counter() - start,
     )
 
+    # Sort by decreasing contamination rate, then by source and target
+    # to ensure deterministic output when rates are identical.
     conta_events.sort(
-        key=lambda event: event.rate,
-        reverse=True,
+        key=lambda event: (-event.rate, event.source, event.target),
     )
 
     _log_search_results(conta_events)

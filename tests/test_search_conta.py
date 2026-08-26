@@ -12,11 +12,16 @@ from sklearn.ensemble import RandomForestClassifier
 import crocodeel.search_conta as search_conta
 from crocodeel.conta_event import ContaminationEvent
 from crocodeel.conta_features import ContaminationFeatureExtractor
-from crocodeel.search_conta import (ContaminationSearcherDriver,
-                                    ContaminationSearcherWorker, Defaults,
-                                    _load_rf_model, _log_search_results,
-                                    _passes_cutoffs, _prepare_search,
-                                    run_search_conta)
+from crocodeel.search_conta import (
+    ContaminationSearcherDriver,
+    ContaminationSearcherWorker,
+    Defaults,
+    _load_rf_model,
+    _log_search_results,
+    _passes_cutoffs,
+    _prepare_search,
+    run_search_conta,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -534,6 +539,137 @@ def test_run_search_conta_no_events(
 
     driver.search_contamination.assert_called_once_with()
     mock_log_results.assert_called_once_with([])
+
+
+@pytest.mark.parametrize(
+    "events",
+    [
+        (
+            ContaminationEvent(
+                source="source_b",
+                target="target_a",
+                rate=0.2,
+                probability=0.8,
+                conta_line_species=[],
+            ),
+            ContaminationEvent(
+                source="source_a",
+                target="target_b",
+                rate=0.2,
+                probability=0.8,
+                conta_line_species=[],
+            ),
+            ContaminationEvent(
+                source="source_a",
+                target="target_a",
+                rate=0.2,
+                probability=0.8,
+                conta_line_species=[],
+            ),
+        ),
+        (
+            ContaminationEvent(
+                source="source_a",
+                target="target_a",
+                rate=0.2,
+                probability=0.8,
+                conta_line_species=[],
+            ),
+            ContaminationEvent(
+                source="source_a",
+                target="target_b",
+                rate=0.2,
+                probability=0.8,
+                conta_line_species=[],
+            ),
+            ContaminationEvent(
+                source="source_b",
+                target="target_a",
+                rate=0.2,
+                probability=0.8,
+                conta_line_species=[],
+            ),
+        ),
+    ],
+    ids=["reverse_order", "sorted_order"],
+)
+def test_run_search_conta_sorts_events_deterministically(
+    species_ab_table: pd.DataFrame,
+    events: tuple[ContaminationEvent, ...],
+) -> None:
+    """Test deterministic sorting of events with identical rates."""
+    rf_model = MagicMock()
+    rf_model_fh = MagicMock()
+
+    prepared_table = species_ab_table.copy()
+    sample_pairs = iter([("sample1", "sample2")])
+
+    driver = MagicMock()
+    driver.search_contamination.return_value = list(events)
+
+    with (
+        patch(
+            "crocodeel.search_conta._load_rf_model",
+            return_value=rf_model,
+        ),
+        patch(
+            "crocodeel.search_conta._prepare_search",
+            return_value=(
+                prepared_table,
+                sample_pairs,
+                1,
+            ),
+        ),
+        patch(
+            "crocodeel.search_conta.ContaminationSearcherDriver",
+            return_value=driver,
+        ),
+        patch(
+            "crocodeel.search_conta._log_search_results",
+        ) as mock_log_results,
+        patch(
+            "crocodeel.search_conta.perf_counter",
+            side_effect=[0.0, 1.5],
+        ),
+    ):
+        result = run_search_conta(
+            species_ab_table=species_ab_table,
+            species_ab_table_2=None,
+            rf_model_fh=rf_model_fh,
+            probability_cutoff=0.5,
+            rate_cutoff=0.01,
+            nproc=2,
+        )
+
+    expected = [
+        ContaminationEvent(
+            source="source_a",
+            target="target_a",
+            rate=0.2,
+            probability=0.8,
+            conta_line_species=[],
+        ),
+        ContaminationEvent(
+            source="source_a",
+            target="target_b",
+            rate=0.2,
+            probability=0.8,
+            conta_line_species=[],
+        ),
+        ContaminationEvent(
+            source="source_b",
+            target="target_a",
+            rate=0.2,
+            probability=0.8,
+            conta_line_species=[],
+        ),
+    ]
+
+    # Events with identical rates are sorted by source, then target.
+    assert result == expected
+
+    # Logging happens after sorting and therefore uses the same order.
+    mock_log_results.assert_called_once_with(expected)
 
 
 # ---------------------------------------------------------------------------
