@@ -85,7 +85,7 @@ class ContaminationEventIO:
 
         try:
             parsed_value = float(value)
-        except ValueError as error:
+        except (TypeError, ValueError) as error:
             raise InputDataError(
                 f"Invalid {column} '{value}' on line {row_number} "
                 "of the contamination events file."

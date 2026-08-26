@@ -270,6 +270,22 @@ def test_read_tsv_rejects_non_numeric_rate() -> None:
         ContaminationEventIO.read_tsv(tsv)
 
 
+def test_read_tsv_rejects_missing_rate():
+    """Test that a missing rate is rejected as invalid input."""
+    tsv = io.StringIO(
+        "source\ttarget\trate\tprobability\t"
+        "contamination_specific_species\n"
+        "sample1\tsample2\t\t0.99\tspecies1\n"
+    )
+    tsv.name = "contamination_events.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match=r"Invalid rate '' on line 2",
+    ):
+        ContaminationEventIO.read_tsv(tsv)
+
+
 @pytest.mark.parametrize(
     "probability",
     [
@@ -307,6 +323,22 @@ def test_read_tsv_rejects_non_numeric_probability() -> None:
     with pytest.raises(
         InputDataError,
         match="Invalid probability",
+    ):
+        ContaminationEventIO.read_tsv(tsv)
+
+
+def test_read_tsv_rejects_missing_probability():
+    """Test that a missing probability is rejected as invalid input."""
+    tsv = io.StringIO(
+        "source\ttarget\trate\tprobability\t"
+        "contamination_specific_species\n"
+        "sample1\tsample2\t0.05\t\tspecies1\n"
+    )
+    tsv.name = "contamination_events.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match=r"Invalid probability '' on line 2",
     ):
         ContaminationEventIO.read_tsv(tsv)
 
