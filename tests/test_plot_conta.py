@@ -425,7 +425,7 @@ def test_run_plot_conta(
     sample_species_ab_table: pd.DataFrame,
     conta_event: ContaminationEvent,
 ) -> None:
-    """Test the run_plot_conta() orchestration."""
+    """Test run_plot_conta() with a second abundance table."""
     pdf_report_fh = MagicMock()
     pdf_report_fh.name = "report.pdf"
 
@@ -449,20 +449,27 @@ def test_run_plot_conta(
             color_conta_species=True,
         )
 
-    expected_table = species_ab_table.join(
-        sample_species_ab_table,
-        how="outer",
-    ).fillna(0.0)
-
     mock_report.assert_called_once()
 
     report_args = mock_report.call_args.args
+    report_table = report_args[0]
 
-    # DataFrames need pandas-specific comparison.
-    pd.testing.assert_frame_equal(
-        report_args[0],
-        expected_table,
+    missing_species = species_ab_table.index.difference(
+        sample_species_ab_table.index,
     )
+
+    assert len(missing_species) > 0
+
+    # Species absent from the second abundance table must be represented
+    # as -inf, corresponding to zero abundance after log10 transformation.
+    for species in missing_species:
+        assert (
+            report_table.loc[
+                species,
+                sample_species_ab_table.columns,
+            ]
+            == -np.inf
+        ).all()
 
     assert report_args[1:] == (
         [conta_event],

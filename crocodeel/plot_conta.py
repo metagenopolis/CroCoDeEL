@@ -29,7 +29,7 @@ def run_plot_conta(
         species_ab_table = species_ab_table.join(
             species_ab_table_2,
             how="outer",
-        ).fillna(0.0)
+        ).fillna(-np.inf)
 
     start = perf_counter()
     logging.info("Generation of the PDF report started")
