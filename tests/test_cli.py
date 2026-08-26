@@ -548,7 +548,14 @@ def test_nproc_uses_available_cpu_count_as_upper_bound(
     if command == "search_conta":
         args.extend(["-c", str(tmp_path / "contamination.tsv")])
     else:
-        args.extend(["-r", str(tmp_path / "report.json")])
+        args.extend(
+            [
+                "-r",
+                str(tmp_path / "report.json"),
+                "-m",
+                str(tmp_path / "model.joblib"),
+            ]
+        )
 
     monkeypatch.setattr("sys.argv", args)
 

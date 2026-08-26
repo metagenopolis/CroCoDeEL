@@ -383,6 +383,15 @@ def add_train_model_arguments(
     available_cpu_count = get_available_cpu_count()
 
     parser.add_argument(
+        "-m",
+        dest="model_fp",
+        type=writable_file,
+        required=True,
+        metavar="MODEL_FILE",
+        help="Output file storing the trained Random Forest model",
+    )
+
+    parser.add_argument(
         "-r",
         dest="json_report_fp",
         type=writable_file,
