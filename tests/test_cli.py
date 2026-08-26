@@ -2,7 +2,7 @@
 
 import argparse
 import logging
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -1183,6 +1183,37 @@ def test_generate_pdf_report(
 
     # The output file is closed by the context manager.
     assert plot_args[3].closed
+
+
+def test_generate_pdf_report_without_events(
+    tmp_path,
+    caplog,
+) -> None:
+    """Test that no PDF is generated when no contamination is detected."""
+    pdf_report_fp = tmp_path / "report.pdf"
+    args = argparse.Namespace(
+        pdf_report_fp=pdf_report_fp,
+    )
+
+    with (
+        patch(
+            "crocodeel.crocodeel.run_plot_conta",
+        ) as mock_run_plot_conta,
+        caplog.at_level(logging.INFO),
+    ):
+        generate_pdf_report(
+            args,
+            pd.DataFrame(),
+            None,
+            [],
+        )
+
+    mock_run_plot_conta.assert_not_called()
+    assert not pdf_report_fp.exists()
+    assert (
+        "No PDF report generated."
+        in caplog.text
+    )
 
 
 def test_load_contamination_events(

@@ -624,6 +624,12 @@ def generate_pdf_report(
     conta_events: list[ContaminationEvent],
 ) -> None:
     """Generate the PDF contamination report."""
+    if not conta_events:
+        logging.info(
+            "No PDF report generated.",
+        )
+        return
+
     with args.pdf_report_fp.open("wb") as pdf_report_fh:
         run_plot_conta(
             species_ab_table,

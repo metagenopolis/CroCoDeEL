@@ -1,6 +1,7 @@
 """Generate PDF reports for detected cross-sample contamination."""
 
 import logging
+from math import ceil
 from time import perf_counter
 from typing import BinaryIO, Final, Optional
 
@@ -33,9 +34,6 @@ def run_plot_conta(
 
     start = perf_counter()
     logging.info("Generation of the PDF report started")
-
-    if not conta_events:
-        logging.warning("The PDF report will be empty")
 
     ContaminationPlotsReport(
         species_ab_table,
@@ -233,7 +231,9 @@ class ContaminationPlotsReport:
     def save_to_pdf(self, pdf_fh: BinaryIO) -> None:
         """Generate a PDF report containing contamination plots."""
         num_plots_per_page = self.nrow * self.ncol
-        num_pages = int(np.ceil(float(len(self.conta_events) / num_plots_per_page)))
+        num_pages = ceil(
+            len(self.conta_events) / num_plots_per_page,
+        )
 
         with PdfPages(pdf_fh) as pdf:
             pbar = tqdm(
