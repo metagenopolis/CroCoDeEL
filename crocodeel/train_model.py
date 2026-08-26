@@ -343,10 +343,8 @@ class FeaturesComputerWorker:
         return features.values
 
 
-# Built once per worker process by _init_worker(). A bound method's `self`
-# gets re-pickled by Pool for every chunk, which would otherwise re-send
-# the full abundance table each time - same fix as search_conta.py, where
-# it measured ~10-15% faster on a 200-sample real dataset at nproc=32.
+# Initialize the worker once per process so the abundance table
+# is sent to each worker only once, rather than being re-serialized per chunk.
 _worker: FeaturesComputerWorker | None = None
 
 
