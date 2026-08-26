@@ -519,6 +519,145 @@ def test_set_logging(monkeypatch):
     )
 
 
+@pytest.mark.parametrize(
+    "command, command_args",
+    [
+        (
+            "search_conta",
+            [
+                "-s",
+                "species.tsv",
+                "-s2",
+                "species2.tsv",
+                "-m",
+                "model.joblib",
+                "--filter-low-ab",
+                "20",
+                "--probability-cutoff",
+                "0.8",
+                "--rate-cutoff",
+                "0.01",
+                "--nproc",
+                "1",
+                "-c",
+                "contamination.tsv",
+            ],
+        ),
+        (
+            "plot_conta",
+            [
+                "-s",
+                "species.tsv",
+                "-s2",
+                "species2.tsv",
+                "--filter-low-ab",
+                "20",
+                "-c",
+                "contamination.tsv",
+                "-r",
+                "report.pdf",
+                "--nrow",
+                "5",
+                "--ncol",
+                "6",
+                "--no-conta-line",
+                "--color-conta-species",
+            ],
+        ),
+        (
+            "easy_wf",
+            [
+                "-s",
+                "species.tsv",
+                "-s2",
+                "species2.tsv",
+                "-m",
+                "model.joblib",
+                "--filter-low-ab",
+                "20",
+                "-c",
+                "contamination.tsv",
+                "--probability-cutoff",
+                "0.8",
+                "--rate-cutoff",
+                "0.01",
+                "--nproc",
+                "1",
+                "-r",
+                "report.pdf",
+                "--nrow",
+                "5",
+                "--ncol",
+                "6",
+                "--no-conta-line",
+                "--color-conta-species",
+            ],
+        ),
+        (
+            "train_model",
+            [
+                "-s",
+                "species.tsv",
+                "--filter-low-ab",
+                "20",
+                "-m",
+                "model.joblib",
+                "-r",
+                "report.json",
+                "--test-size",
+                "0.25",
+                "--ntrees",
+                "100",
+                "--rng-seed",
+                "42",
+                "--nproc",
+                "1",
+            ],
+        ),
+    ],
+)
+def test_get_arguments_parses_valid_command(
+    tmp_path,
+    monkeypatch,
+    command,
+    command_args,
+):
+    """Test that each file-based subcommand parses a complete command line."""
+    for filename in {
+        "species.tsv",
+        "species2.tsv",
+        "model.joblib",
+        "contamination.tsv",
+        "report.pdf",
+        "report.json",
+    }:
+        (tmp_path / filename).touch()
+
+    args = [
+        "crocodeel",
+        command,
+        *[
+            str(tmp_path / arg)
+            if arg in {
+                "species.tsv",
+                "species2.tsv",
+                "model.joblib",
+                "contamination.tsv",
+                "report.pdf",
+                "report.json",
+            }
+            else arg
+            for arg in command_args
+        ],
+    ]
+
+    monkeypatch.setattr("sys.argv", args)
+
+    parsed_args = get_arguments()
+
+    assert parsed_args.command == command
+
+
 @pytest.mark.parametrize("command", ["search_conta", "train_model"])
 def test_nproc_uses_available_cpu_count_as_upper_bound(
     tmp_path,
