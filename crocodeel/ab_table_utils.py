@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from crocodeel.exceptions import InputDataError
+from crocodeel.utils import format_sample_names
 
 
 def _validate_and_normalize_species_names(species_ab_table: pd.DataFrame) -> None:
@@ -33,7 +34,7 @@ def _check_numeric_abundances(species_ab_table: pd.DataFrame) -> None:
     if bad_format_samples:
         raise InputDataError(
             "Species abundance in the following samples is not numeric: "
-            + " ".join(bad_format_samples)
+            + format_sample_names(bad_format_samples)
         )
 
 
@@ -46,7 +47,7 @@ def _check_non_negative_abundances(
     if not negative_samples.empty:
         raise InputDataError(
             "The following samples contain negative species abundances: "
-            + " ".join(negative_samples)
+            + format_sample_names(negative_samples.tolist())
         )
 
 
@@ -61,7 +62,7 @@ def _check_no_missing_abundances(
     if not samples_with_missing_values.empty:
         raise InputDataError(
             "The following samples contain missing species abundances: "
-            + " ".join(samples_with_missing_values)
+            + format_sample_names(samples_with_missing_values.tolist())
         )
 
 
@@ -74,17 +75,17 @@ def _check_non_empty_samples(
     if not empty_samples.empty:
         raise InputDataError(
             "The following samples have no non-zero species abundances: "
-            + " ".join(empty_samples)
+            + format_sample_names(empty_samples.tolist())
         )
 
 
 def read(fh: TextIO) -> pd.DataFrame:
     """Read a species abundance table from a TSV file."""
-    # Read table
     logging.info("Reading %s", fh.name)
     species_ab_table = pd.read_csv(fh, sep="\t", header=0, index_col=0, comment="#")
     num_species = species_ab_table.shape[0]
     num_samples = species_ab_table.shape[1]
+
     logging.info(
         "Abundance table quantifies %d species in %d sample%s",
         num_species,
@@ -154,8 +155,10 @@ def read_filter_normalize(
     species_ab_table = read(fh)
     _validate_and_normalize_species_names(species_ab_table)
     _check_numeric_abundances(species_ab_table)
+
     # Use a floating-point representation for all subsequent preprocessing.
     species_ab_table = species_ab_table.astype(float)
+
     _check_no_missing_abundances(species_ab_table)
     _check_non_negative_abundances(species_ab_table)
     _check_non_empty_samples(species_ab_table)

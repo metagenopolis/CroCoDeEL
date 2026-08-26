@@ -18,6 +18,7 @@ from tqdm import tqdm
 from crocodeel.conta_features import (ContaminationFeatureExtractor,
                                       ContaminationFeatures)
 from crocodeel.exceptions import InputDataError
+from crocodeel.utils import format_sample_names
 
 SamplePair = tuple[str, str]
 
@@ -135,7 +136,8 @@ def _reconstruct_sample_pairs(
     if invalid_sample_names:
         raise InputDataError(
             "The following sample names do not match the expected pattern "
-            f"'{sample_name_pattern.pattern}': " + ", ".join(invalid_sample_names)
+            f"'{sample_name_pattern.pattern}' "
+            f"({format_sample_names(invalid_sample_names)})."
         )
     source_samples = [sample for sample in sample_names if "_source_" in sample]
 
@@ -162,13 +164,13 @@ def _reconstruct_sample_pairs(
         if sources_without_targets:
             error_messages.append(
                 "source samples without corresponding targets: "
-                + ", ".join(sources_without_targets)
+                + format_sample_names(sources_without_targets)
             )
 
         if targets_without_sources:
             error_messages.append(
                 "target samples without corresponding sources: "
-                + ", ".join(targets_without_sources)
+                + format_sample_names(targets_without_sources)
             )
 
         raise InputDataError("; ".join(error_messages))
