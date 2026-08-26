@@ -141,25 +141,27 @@ class ContaminationEventIO:
 
     @staticmethod
     def _prepend_line(
-        line: str,
+        line: str | None,
         fh: TextIO,
     ) -> Iterator[str]:
         """Yield one previously read line followed by the remaining stream."""
-        yield line
+        if line is not None:
+            yield line
         yield from fh
 
     @staticmethod
     def _read_header(
         fh: TextIO,
-    ) -> tuple[str, int]:
-        """Read comments before the header and return the header and line number."""
+    ) -> tuple[str | None, int]:
+        """Read comments before the header and return the header and line number.
+        
+        Return ``(None, 0)`` when the file is empty or contains only comments.
+        """
         for line_number, line in enumerate(fh, start=1):
             if not line.startswith("#"):
                 return line, line_number
 
-        raise InputDataError(
-            "Contamination events file is empty or has no header."
-        )
+        return None, 0
 
     @staticmethod
     def read_tsv(fh: TextIO) -> list[ContaminationEvent]:
