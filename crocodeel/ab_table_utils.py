@@ -123,12 +123,28 @@ def filter_low_ab(
     species_ab_table: pd.DataFrame, filtering_ab_thr_factor: float
 ) -> pd.DataFrame:
     """Remove species with low abundances from each sample."""
-    species_ab_table = species_ab_table.apply(
-        lambda ab: np.where(ab <= filtering_ab_thr_factor * ab[ab > 0].min(), 0, ab)
+    values = species_ab_table.to_numpy()
+
+    min_positive = np.min(
+        values,
+        axis=0,
+        where=values > 0,
+        initial=np.inf,
     )
+
+    filtered = np.where(
+        values <= filtering_ab_thr_factor * min_positive,
+        0.0,
+        values,
+    )
+
     logging.info("Low-abundance species filtered out")
 
-    return species_ab_table
+    return pd.DataFrame(
+        filtered,
+        index=species_ab_table.index,
+        columns=species_ab_table.columns,
+    )
 
 
 def read_filter_normalize(
@@ -138,6 +154,8 @@ def read_filter_normalize(
     species_ab_table = read(fh)
     _validate_and_normalize_species_names(species_ab_table)
     _check_numeric_abundances(species_ab_table)
+    # Use a floating-point representation for all subsequent preprocessing.
+    species_ab_table = species_ab_table.astype(float)
     _check_no_missing_abundances(species_ab_table)
     _check_non_negative_abundances(species_ab_table)
     _check_non_empty_samples(species_ab_table)
