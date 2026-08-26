@@ -3,7 +3,7 @@
 import csv
 import logging
 from dataclasses import dataclass, field
-from typing import Final, Sequence, TextIO
+from typing import Final, Iterator, Sequence, TextIO
 
 import numpy as np
 
@@ -140,26 +140,33 @@ class ContaminationEventIO:
             )
 
     @staticmethod
+    def _prepend_line(
+        line: str,
+        fh: TextIO,
+    ) -> Iterator[str]:
+        """Yield one previously read line followed by the remaining stream."""
+        yield line
+        yield from fh
+
+    @staticmethod
     def read_tsv(fh: TextIO) -> list[ContaminationEvent]:
         """Read and validate contamination events from a TSV file."""
-        # Skip comment lines before the header.
-        pos = 0
+        # Read comments before the header without requiring a seekable stream.
+        line_number = 0
+        header = None
 
-        while True:
-            line = fh.readline()
-
-            if not line:
-                break
+        for line in fh:
+            line_number += 1
 
             if not line.startswith("#"):
+                header = line
                 break
 
-            pos = fh.tell()
-
-        fh.seek(pos)
+        if header is None:
+            ContaminationEventIO._validate_columns(None)
 
         tsv_reader = csv.DictReader(
-            fh,
+            ContaminationEventIO._prepend_line(header, fh),
             delimiter="\t",
         )
 
@@ -170,7 +177,7 @@ class ContaminationEventIO:
         conta_events: list[ContaminationEvent] = []
 
         for row in tsv_reader:
-            row_number = tsv_reader.line_num
+            row_number = line_number + tsv_reader.line_num - 1
 
             if None in row or any(value is None for value in row.values()):
                 raise InputDataError(
