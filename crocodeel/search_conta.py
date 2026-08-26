@@ -13,8 +13,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.exceptions import \
-    InconsistentVersionWarning  # type: ignore[attr-defined]
+from sklearn.exceptions import InconsistentVersionWarning  # type: ignore[attr-defined]
 from tqdm import tqdm
 
 from crocodeel.conta_event import ContaminationEvent

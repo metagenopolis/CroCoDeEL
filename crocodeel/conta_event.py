@@ -149,21 +149,23 @@ class ContaminationEventIO:
         yield from fh
 
     @staticmethod
+    def _read_header(
+        fh: TextIO,
+    ) -> tuple[str, int]:
+        """Read comments before the header and return the header and line number."""
+        for line_number, line in enumerate(fh, start=1):
+            if not line.startswith("#"):
+                return line, line_number
+
+        raise InputDataError(
+            "Contamination events file is empty or has no header."
+        )
+
+    @staticmethod
     def read_tsv(fh: TextIO) -> list[ContaminationEvent]:
         """Read and validate contamination events from a TSV file."""
-        # Read comments before the header without requiring a seekable stream.
-        line_number = 0
-        header = None
-
-        for line in fh:
-            line_number += 1
-
-            if not line.startswith("#"):
-                header = line
-                break
-
-        if header is None:
-            ContaminationEventIO._validate_columns(None)
+        # Skip comment lines before the header without requiring a seekable stream.
+        header, header_line_number = ContaminationEventIO._read_header(fh)
 
         tsv_reader = csv.DictReader(
             ContaminationEventIO._prepend_line(header, fh),
@@ -177,7 +179,7 @@ class ContaminationEventIO:
         conta_events: list[ContaminationEvent] = []
 
         for row in tsv_reader:
-            row_number = line_number + tsv_reader.line_num - 1
+            row_number = header_line_number + tsv_reader.line_num - 1
 
             if None in row or any(value is None for value in row.values()):
                 raise InputDataError(
@@ -237,7 +239,7 @@ class ContaminationEventIO:
         conta_events: list[ContaminationEvent],
         fh: TextIO,
     ) -> None:
-        """Write contamination events to a TSV file."""
+        """Write contamination events to TSV format."""
         print(
             "\t".join(
                 [
