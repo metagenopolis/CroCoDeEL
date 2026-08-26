@@ -183,6 +183,22 @@ def test_read_tsv_rejects_missing_columns() -> None:
         ContaminationEventIO.read_tsv(tsv)
 
 
+def test_read_tsv_rejects_truncated_row():
+    """Test that a truncated TSV row is rejected."""
+    tsv = io.StringIO(
+        "source\ttarget\trate\tprobability\t"
+        "contamination_specific_species\n"
+        "sample1\tsample2\t0.05\t0.99\n"
+    )
+    tsv.name = "contamination_events.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match=r"Invalid number of fields on line 2",
+    ):
+        ContaminationEventIO.read_tsv(tsv)
+
+
 def test_read_tsv_rejects_empty_source() -> None:
     """Test that an empty source sample is rejected."""
     tsv = io.StringIO(

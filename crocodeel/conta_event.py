@@ -169,7 +169,15 @@ class ContaminationEventIO:
 
         conta_events: list[ContaminationEvent] = []
 
-        for row_number, row in enumerate(tsv_reader, start=2):
+        for row in tsv_reader:
+            row_number = tsv_reader.line_num
+
+            if None in row or any(value is None for value in row.values()):
+                raise InputDataError(
+                    f"Invalid number of fields on line {row_number} "
+                    "of the contamination events file."
+                )
+
             source = row["source"]
             target = row["target"]
             contamination_specific_species = row[
