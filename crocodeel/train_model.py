@@ -345,7 +345,7 @@ class FeaturesComputerWorker:
 
 # Initialize the worker once per process so the abundance table
 # is sent to each worker only once, rather than being re-serialized per chunk.
-_worker: FeaturesComputerWorker | None = None
+_worker: FeaturesComputerWorker | None = None  # pylint: disable=invalid-name
 
 
 def _init_worker(species_ab_table: pd.DataFrame) -> None:
