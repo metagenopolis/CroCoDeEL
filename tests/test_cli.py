@@ -520,7 +520,7 @@ def test_set_logging(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "command, command_args",
+    "command, command_args, expected",
     [
         (
             "search_conta",
@@ -542,6 +542,16 @@ def test_set_logging(monkeypatch):
                 "-c",
                 "contamination.tsv",
             ],
+            {
+                "species_ab_table_fp": "species.tsv",
+                "species_ab_table_2_fp": "species2.tsv",
+                "rf_model_fp": "model.joblib",
+                "filtering_ab_thr_factor": 20.0,
+                "probability_cutoff": 0.8,
+                "rate_cutoff": 0.01,
+                "nproc": 1,
+                "conta_events_fp": "contamination.tsv",
+            },
         ),
         (
             "plot_conta",
@@ -563,6 +573,17 @@ def test_set_logging(monkeypatch):
                 "--no-conta-line",
                 "--color-conta-species",
             ],
+            {
+                "species_ab_table_fp": "species.tsv",
+                "species_ab_table_2_fp": "species2.tsv",
+                "filtering_ab_thr_factor": 20.0,
+                "conta_events_fp": "contamination.tsv",
+                "pdf_report_fp": "report.pdf",
+                "nrow": 5,
+                "ncol": 6,
+                "no_conta_line": True,
+                "color_conta_species": True,
+            },
         ),
         (
             "easy_wf",
@@ -592,6 +613,21 @@ def test_set_logging(monkeypatch):
                 "--no-conta-line",
                 "--color-conta-species",
             ],
+            {
+                "species_ab_table_fp": "species.tsv",
+                "species_ab_table_2_fp": "species2.tsv",
+                "rf_model_fp": "model.joblib",
+                "filtering_ab_thr_factor": 20.0,
+                "conta_events_fp": "contamination.tsv",
+                "probability_cutoff": 0.8,
+                "rate_cutoff": 0.01,
+                "nproc": 1,
+                "pdf_report_fp": "report.pdf",
+                "nrow": 5,
+                "ncol": 6,
+                "no_conta_line": True,
+                "color_conta_species": True,
+            },
         ),
         (
             "train_model",
@@ -613,6 +649,25 @@ def test_set_logging(monkeypatch):
                 "--nproc",
                 "1",
             ],
+            {
+                "species_ab_table_fp": "species.tsv",
+                "filtering_ab_thr_factor": 20.0,
+                "model_fp": "model.joblib",
+                "json_report_fp": "report.json",
+                "test_size": 0.25,
+                "ntrees": 100,
+                "rng_seed": 42,
+                "nproc": 1,
+            },
+        ),
+        (
+            "self_test",
+            [
+                "--keep-results",
+            ],
+            {
+                "keep_results": True,
+            },
         ),
     ],
 )
@@ -621,8 +676,9 @@ def test_get_arguments_parses_valid_command(
     monkeypatch,
     command,
     command_args,
+    expected,
 ):
-    """Test that each file-based subcommand parses a complete command line."""
+    """Test that each subcommand parses a complete valid command line."""
     for filename in {
         "species.tsv",
         "species2.tsv",
@@ -633,20 +689,20 @@ def test_get_arguments_parses_valid_command(
     }:
         (tmp_path / filename).touch()
 
+    path_arguments = {
+        "species.tsv",
+        "species2.tsv",
+        "model.joblib",
+        "contamination.tsv",
+        "report.pdf",
+        "report.json",
+    }
+
     args = [
         "crocodeel",
         command,
         *[
-            str(tmp_path / arg)
-            if arg in {
-                "species.tsv",
-                "species2.tsv",
-                "model.joblib",
-                "contamination.tsv",
-                "report.pdf",
-                "report.json",
-            }
-            else arg
+            str(tmp_path / arg) if arg in path_arguments else arg
             for arg in command_args
         ],
     ]
@@ -656,6 +712,14 @@ def test_get_arguments_parses_valid_command(
     parsed_args = get_arguments()
 
     assert parsed_args.command == command
+
+    for name, expected_value in expected.items():
+        actual_value = getattr(parsed_args, name)
+
+        if hasattr(actual_value, "name"):
+            actual_value = actual_value.name
+
+        assert actual_value == expected_value
 
 
 @pytest.mark.parametrize("command", ["search_conta", "train_model"])
