@@ -8,10 +8,12 @@ import pandas as pd
 import pytest
 
 from crocodeel.conta_event import ContaminationEvent
-from crocodeel.crocodeel import (bounded_float_01, generate_pdf_report,
-                                 get_arguments, load_abundance_tables,
+from crocodeel.crocodeel import (bounded_float_01, bounded_int,
+                                 generate_pdf_report, get_arguments,
+                                 get_available_cpu_count,
+                                 load_abundance_tables,
                                  load_contamination_events,
-                                 log_contamination_warnings, main, nproc,
+                                 log_contamination_warnings, main,
                                  positive_float, positive_int, readable_file,
                                  run_easy_workflow, run_plot_conta_command,
                                  run_search, run_search_conta_command,
@@ -371,27 +373,6 @@ def test_positive_int_invalid(value):
 
 
 @pytest.mark.parametrize(
-    "value",
-    ["0", "-1", "abc"],
-)
-def test_nproc_invalid(value):
-    """Test that invalid process counts are rejected."""
-    with pytest.raises(argparse.ArgumentTypeError):
-        nproc(value)
-
-
-def test_nproc_too_many():
-    """Test that more processes than available CPUs are rejected."""
-    with pytest.raises(argparse.ArgumentTypeError):
-        nproc("999999")
-
-
-def test_nproc_valid():
-    """Test that a valid process count is accepted."""
-    assert nproc("1") == 1
-
-
-@pytest.mark.parametrize(
     "value, expected",
     [
         ("0", 0.0),
@@ -463,6 +444,58 @@ def test_bounded_float_01_rejects_non_finite_values(value):
     ):
         bounded_float_01(value)
 
+@pytest.mark.parametrize(
+    "value, minimum, maximum, expected",
+    [
+        ("1", 1, 4, 1),
+        ("2", 1, 4, 2),
+        ("4", 1, 4, 4),
+    ],
+)
+def test_bounded_int_valid(value, minimum, maximum, expected):
+    """Test that bounded_int accepts values within the range."""
+    assert bounded_int(value, minimum, maximum) == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "abc",
+        "1.5",
+        "0",
+        "-1",
+        "5",
+    ],
+)
+def test_bounded_int_invalid(value):
+    """Test that bounded_int rejects invalid and out-of-range values."""
+    with pytest.raises(argparse.ArgumentTypeError):
+        bounded_int(value, 1, 4)
+
+
+def test_get_available_cpu_count_uses_cpu_affinity(monkeypatch):
+    """Test that CPU affinity determines the available CPU count."""
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.os.sched_getaffinity",
+        lambda pid: {0, 1, 2, 3},
+    )
+
+    assert get_available_cpu_count() == 4
+
+
+def test_get_available_cpu_count_falls_back_to_cpu_count(monkeypatch):
+    """Test the CPU count fallback when CPU affinity is unavailable."""
+    monkeypatch.delattr(
+        "crocodeel.crocodeel.os.sched_getaffinity",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.multiprocessing.cpu_count",
+        lambda: 8,
+    )
+
+    assert get_available_cpu_count() == 8
+
 
 # ---------------------------------------------------------------------------
 # Command-line argument parsing
@@ -484,6 +517,44 @@ def test_set_logging(monkeypatch):
         format="%(asctime)s :: %(levelname)s :: %(message)s",
         level=logging.INFO,
     )
+
+
+@pytest.mark.parametrize("command", ["search_conta", "train_model"])
+def test_nproc_uses_available_cpu_count_as_upper_bound(
+    tmp_path,
+    monkeypatch,
+    command,
+):
+    """Test that --nproc uses the available CPU count as its upper bound."""
+    available_cpu_count = 4
+
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.get_available_cpu_count",
+        lambda: available_cpu_count,
+    )
+
+    species_file = tmp_path / "species.tsv"
+    species_file.write_text("test\n")
+
+    args = [
+        "crocodeel",
+        command,
+        "-s",
+        str(species_file),
+        "--nproc",
+        "4",
+    ]
+
+    if command == "search_conta":
+        args.extend(["-c", str(tmp_path / "contamination.tsv")])
+    else:
+        args.extend(["-r", str(tmp_path / "report.json")])
+
+    monkeypatch.setattr("sys.argv", args)
+
+    parsed_args = get_arguments()
+
+    assert parsed_args.nproc == 4
 
 
 def test_search_conta_arguments(tmp_path, monkeypatch):

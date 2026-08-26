@@ -82,28 +82,6 @@ def writable_file(fp_str: str) -> Path:
     return fp
 
 
-def nproc(value: str) -> int:
-    """Validate the number of requested parallel processes."""
-    max_nproc = multiprocessing.cpu_count()
-
-    try:
-        ivalue = int(value)
-    except ValueError as value_err:
-        raise argparse.ArgumentTypeError(
-            f"{value} is not an integer"
-        ) from value_err
-
-    if ivalue <= 0:
-        raise argparse.ArgumentTypeError("minimum value is 1")
-
-    if ivalue > max_nproc:
-        raise argparse.ArgumentTypeError(
-            f"maximum value is {max_nproc}"
-        )
-
-    return ivalue
-
-
 def positive_int(value: str) -> int:
     """Validate a strictly positive integer."""
     try:
@@ -138,6 +116,27 @@ def bounded_float_01(value: str) -> float:
     return fvalue
 
 
+def bounded_int(
+    value: str,
+    minimum: int,
+    maximum: int,
+) -> int:
+    """Parse an integer within a specified range."""
+    try:
+        parsed_value = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            f"invalid integer value: '{value}'"
+        ) from error
+
+    if not minimum <= parsed_value <= maximum:
+        raise argparse.ArgumentTypeError(
+            f"value must be between {minimum} and {maximum}"
+        )
+
+    return parsed_value
+
+
 def positive_float(value: str) -> float:
     """Validate a strictly positive floating-point value."""
     try:
@@ -154,6 +153,12 @@ def positive_float(value: str) -> float:
 
     return fvalue
 
+def get_available_cpu_count() -> int:
+    """Return the number of CPUs available to the current process."""
+    if hasattr(os, "sched_getaffinity"):
+        return len(os.sched_getaffinity(0))
+
+    return multiprocessing.cpu_count()
 
 def add_abundance_table_arguments(
     parser: argparse.ArgumentParser,
@@ -232,6 +237,8 @@ def add_search_arguments(
     include_conta_events: bool = True,
 ) -> None:
     """Add arguments used to search for contamination."""
+    available_cpu_count = get_available_cpu_count()
+
     parser.add_argument(
         "-m",
         dest="rf_model_fp",
@@ -284,11 +291,16 @@ def add_search_arguments(
     parser.add_argument(
         "--nproc",
         dest="nproc",
-        type=nproc,
-        default=multiprocessing.cpu_count(),
+        type=lambda value: bounded_int(
+            value,
+            minimum=1,
+            maximum=available_cpu_count,
+        ),
+        default=available_cpu_count,
+        metavar="N",
         help=(
             "Number of parallel processes to search contaminations "
-            "(default: %(default)d)"
+            f"(1-{available_cpu_count}, default: {available_cpu_count})"
         ),
     )
 
@@ -368,14 +380,7 @@ def add_train_model_arguments(
     parser: argparse.ArgumentParser,
 ) -> None:
     """Add arguments used to train the Random Forest model."""
-    parser.add_argument(
-        "-m",
-        dest="model_fp",
-        type=writable_file,
-        required=True,
-        metavar="MODEL_FILE",
-        help="Output file storing the trained Random Forest model",
-    )
+    available_cpu_count = get_available_cpu_count()
 
     parser.add_argument(
         "-r",
@@ -428,11 +433,16 @@ def add_train_model_arguments(
     parser.add_argument(
         "--nproc",
         dest="nproc",
-        type=nproc,
-        default=multiprocessing.cpu_count(),
+        type=lambda value: bounded_int(
+            value,
+            minimum=1,
+            maximum=available_cpu_count,
+        ),
+        default=available_cpu_count,
+        metavar="N",
         help=(
             "Number of parallel processes to train the model "
-            "(default: %(default)d)"
+            f"(1-{available_cpu_count}, default: {available_cpu_count})"
         ),
     )
 
