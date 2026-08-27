@@ -28,13 +28,16 @@ jobs:
         run: pip install poetry
 
       - name: Install dependencies
-        run: poetry install --with test,mypy
+        run: poetry install --with test,mypy,pylint
 
       - name: Run tests
         run: poetry run pytest -v --cov=crocodeel --cov-report=xml
 
       - name: Run mypy
         run: poetry run mypy crocodeel
+
+      - name: Run pylint
+        run: poetry run pylint --disable=R crocodeel
 
       - name: Run installation test
         run: poetry run crocodeel self_test
