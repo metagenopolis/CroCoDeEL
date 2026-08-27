@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.linear_model import RANSACRegressor
-from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import NearestNeighbors
 
 
@@ -50,7 +49,10 @@ class _UnitSlopeRegression(RegressorMixin, BaseEstimator):
         The negative value follows the scikit-learn convention that higher
         scores indicate better model performance.
         """
-        return -mean_squared_error(y, self.predict(X), sample_weight=sample_weight)
+        squared_errors = (y - self.predict(X)) ** 2
+        if sample_weight is None:
+            return -float(np.mean(squared_errors))
+        return -float(np.average(squared_errors, weights=sample_weight))
 
 
 class ContaminationFeatureExtractor:
