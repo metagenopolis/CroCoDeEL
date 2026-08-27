@@ -82,7 +82,24 @@ def _check_non_empty_samples(
 def read(fh: TextIO) -> pd.DataFrame:
     """Read a species abundance table from a TSV file."""
     logging.info("Reading %s", fh.name)
-    species_ab_table = pd.read_csv(fh, sep="\t", header=0, index_col=0, comment="#")
+
+    try:
+        species_ab_table = pd.read_csv(
+            fh,
+            sep="\t",
+            header=0,
+            index_col=0,
+            comment="#",
+        )
+    except pd.errors.EmptyDataError as error:
+        raise InputDataError(
+            f"Species abundance table '{fh.name}' is empty."
+        ) from error
+    except pd.errors.ParserError as error:
+        raise InputDataError(
+            f"Invalid species abundance table '{fh.name}': {error}"
+        ) from error
+
     num_species = species_ab_table.shape[0]
     num_samples = species_ab_table.shape[1]
 

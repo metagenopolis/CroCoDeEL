@@ -57,6 +57,34 @@ def test_read_accepts_comments() -> None:
     assert result.shape == (2, 1)
 
 
+def test_read_rejects_empty_file() -> None:
+    """Test that an empty abundance table raises InputDataError."""
+    table = io.StringIO("")
+    table.name = "species_abundance.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match="Species abundance table 'species_abundance.tsv' is empty",
+    ):
+        read(table)
+
+
+def test_read_rejects_malformed_table() -> None:
+    """Test that a malformed abundance table raises InputDataError."""
+    table = io.StringIO(
+        "species_name\tsample1\tsample2\n"
+        "species_1\t0.1\t0.2\n"
+        "species_2\t0.9\t0.8\textra\n"
+    )
+    table.name = "species_abundance.tsv"
+
+    with pytest.raises(
+        InputDataError,
+        match="Invalid species abundance table 'species_abundance.tsv'",
+    ):
+        read(table)
+
+
 def test_read_logs_table_dimensions(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
