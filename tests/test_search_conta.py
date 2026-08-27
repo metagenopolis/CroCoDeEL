@@ -11,17 +11,14 @@ from sklearn.ensemble import RandomForestClassifier
 
 import crocodeel.search_conta as search_conta
 from crocodeel.conta_event import ContaminationEvent
-from crocodeel.conta_features import ContaminationFeatureExtractor
-from crocodeel.search_conta import (
-    ContaminationSearcherDriver,
-    ContaminationSearcherWorker,
-    Defaults,
-    _load_rf_model,
-    _log_search_results,
-    _passes_cutoffs,
-    _prepare_search,
-    run_search_conta,
-)
+from crocodeel.conta_features import (ContaminationFeatureExtractor,
+                                      ContaminationFeatures)
+from crocodeel.exceptions import InputDataError
+from crocodeel.search_conta import (ContaminationSearcherDriver,
+                                    ContaminationSearcherWorker, Defaults,
+                                    _load_rf_model, _log_search_results,
+                                    _passes_cutoffs, _prepare_search,
+                                    run_search_conta)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -57,6 +54,11 @@ def conta_event() -> ContaminationEvent:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# _load_rf_model()
+# ---------------------------------------------------------------------------
+
+
 def test_load_rf_model() -> None:
     """Test loading the packaged Random Forest model."""
     model_fp = importlib.resources.files("crocodeel").joinpath(
@@ -68,6 +70,45 @@ def test_load_rf_model() -> None:
         model = _load_rf_model(model_fh)
 
     assert isinstance(model, RandomForestClassifier)
+    assert model.n_features_in_ == ContaminationFeatures.NUM_FEATURES
+
+
+def test_load_rf_model_rejects_wrong_type() -> None:
+    """Test that a model that is not a Random Forest is rejected."""
+    model_fh = MagicMock()
+    model_fh.name = "model.joblib"
+
+    with patch(
+        "crocodeel.search_conta.joblib.load",
+        return_value={},
+    ):
+        with pytest.raises(
+            InputDataError,
+            match="model\\.joblib.*not an sklearn RandomForestClassifier",
+        ):
+            _load_rf_model(model_fh)
+
+
+def test_load_rf_model_rejects_wrong_number_of_features() -> None:
+    """Test that a Random Forest with the wrong number of features is rejected."""
+    model_fh = MagicMock()
+    model_fh.name = "model.joblib"
+
+    model = RandomForestClassifier()
+    model.n_features_in_ = ContaminationFeatures.NUM_FEATURES + 1
+
+    with patch(
+        "crocodeel.search_conta.joblib.load",
+        return_value=model,
+    ):
+        with pytest.raises(
+            InputDataError,
+            match=(
+                rf"model\.joblib expects "
+                rf"{ContaminationFeatures.NUM_FEATURES + 1} features"
+            ),
+        ):
+            _load_rf_model(model_fh)
 
 
 # ---------------------------------------------------------------------------

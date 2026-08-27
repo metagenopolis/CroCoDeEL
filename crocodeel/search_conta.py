@@ -19,6 +19,7 @@ from tqdm import tqdm
 from crocodeel.conta_event import ContaminationEvent
 from crocodeel.conta_features import (ContaminationFeatureExtractor,
                                       ContaminationFeatures)
+from crocodeel.exceptions import InputDataError
 
 SamplePair = tuple[str, str]
 
@@ -80,14 +81,28 @@ def run_search_conta(
 def _load_rf_model(
     rf_model_fh: BinaryIO,
 ) -> RandomForestClassifier:
-    """Load the Random Forest model while suppressing version warnings."""
+    """Load and validate the Random Forest model."""
     with warnings.catch_warnings():
         warnings.filterwarnings(
             action="ignore",
             category=InconsistentVersionWarning,
         )
-        return joblib.load(rf_model_fh)
+        rf_model = joblib.load(rf_model_fh)
 
+    if not isinstance(rf_model, RandomForestClassifier):
+        raise InputDataError(
+            f"The model file {rf_model_fh.name} is not an "
+            "sklearn RandomForestClassifier."
+        )
+
+    if rf_model.n_features_in_ != ContaminationFeatures.NUM_FEATURES:
+        raise InputDataError(
+            f"The Random Forest model {rf_model_fh.name} expects "
+            f"{rf_model.n_features_in_} features, but "
+            f"{ContaminationFeatures.NUM_FEATURES} are required."
+        )
+
+    return rf_model
 
 def _prepare_search(
     species_ab_table: pd.DataFrame,
