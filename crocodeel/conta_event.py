@@ -26,14 +26,14 @@ def round_conta_rate(
     significant_digits: int = 3,
 ) -> float:
     """
-    Round a contamination rate to a specific number of significant digits.
+    Round a contamination rate expressed as a percentage.
 
-    The contamination rate must be between 0 and 1. Unlike standard
+    The contamination rate must be strictly positive. Unlike standard
     rounding, this adjusts the decimal precision based on the magnitude
     of the rate to ensure detail is preserved for small values.
     """
-    if rate == 0:
-        return 0
+    if rate <= 0:
+        raise ValueError("Contamination rate must be strictly positive.")
 
     magnitude = np.floor(np.log10(rate))
     decimals = int(significant_digits - (magnitude + 1))
@@ -121,10 +121,10 @@ class ContaminationEventIO:
                 "of the contamination events file."
             )
 
-        if not 0 <= rate <= 1:
+        if not 0 < rate <= 1:
             raise InputDataError(
                 f"Invalid contamination rate '{rate}' on line {row_number}: "
-                "value must be between 0 and 1."
+                "value must be greater than 0 and at most 1."
             )
 
         if not 0 <= probability <= 1:
