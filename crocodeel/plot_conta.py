@@ -13,6 +13,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 from tqdm import tqdm
 
 from crocodeel.conta_event import ContaminationEvent, round_conta_rate
+from crocodeel.exceptions import InputDataError
+from crocodeel.utils import format_sample_names
 
 
 def run_plot_conta(
@@ -62,6 +64,36 @@ class Defaults:
     MAX_NCOL: Final[int] = 11
 
 
+def _validate_event_samples(
+    species_ab_table: pd.DataFrame,
+    conta_events: list[ContaminationEvent],
+) -> None:
+    """Validate that all event samples are present in the abundance table."""
+    sample_names = set(species_ab_table.columns)
+
+    unknown_sources = sorted(
+        {event.source for event in conta_events if event.source not in sample_names}
+    )
+    unknown_targets = sorted(
+        {event.target for event in conta_events if event.target not in sample_names}
+    )
+
+    if unknown_sources or unknown_targets:
+        error_messages = []
+
+        if unknown_sources:
+            error_messages.append(
+                "unknown source samples: " + format_sample_names(unknown_sources)
+            )
+
+        if unknown_targets:
+            error_messages.append(
+                "unknown target samples: " + format_sample_names(unknown_targets)
+            )
+
+        raise InputDataError("; ".join(error_messages))
+
+
 class ContaminationPlotsReport:
     """Generate scatterplot reports for detected contamination events."""
 
@@ -74,6 +106,8 @@ class ContaminationPlotsReport:
         no_conta_line: bool,
         color_conta_species: bool,
     ) -> None:
+        _validate_event_samples(species_ab_table, conta_events)
+
         self.species_ab_table = species_ab_table.copy()
         self.conta_events = conta_events
         self.nrow = nrow

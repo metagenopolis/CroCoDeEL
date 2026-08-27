@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from crocodeel.conta_event import ContaminationEvent
+from crocodeel.exceptions import InputDataError
 from crocodeel.plot_conta import ContaminationPlotsReport, run_plot_conta
 
 # ---------------------------------------------------------------------------
@@ -121,6 +122,105 @@ def test_constructor_computes_pseudo_zero(
     )
 
     assert report.pseudo_zero == -3
+
+
+def test_constructor_rejects_unknown_source_sample(
+    species_ab_table: pd.DataFrame,
+    conta_event: ContaminationEvent,
+) -> None:
+    """Test that an unknown source sample is rejected."""
+    conta_event.source = "unknown_source"
+
+    with pytest.raises(
+        InputDataError,
+        match="unknown source samples: unknown_source",
+    ):
+        ContaminationPlotsReport(
+            species_ab_table,
+            [conta_event],
+            nrow=1,
+            ncol=1,
+            no_conta_line=False,
+            color_conta_species=False,
+        )
+
+
+def test_constructor_rejects_unknown_target_sample(
+    species_ab_table: pd.DataFrame,
+    conta_event: ContaminationEvent,
+) -> None:
+    """Test that an unknown target sample is rejected."""
+    conta_event.target = "unknown_target"
+
+    with pytest.raises(
+        InputDataError,
+        match="unknown target samples: unknown_target",
+    ):
+        ContaminationPlotsReport(
+            species_ab_table,
+            [conta_event],
+            nrow=1,
+            ncol=1,
+            no_conta_line=False,
+            color_conta_species=False,
+        )
+
+
+def test_constructor_rejects_unknown_source_and_target_samples(
+    species_ab_table: pd.DataFrame,
+    conta_event: ContaminationEvent,
+) -> None:
+    """Test that unknown source and target samples are both reported."""
+    conta_event.source = "unknown_source"
+    conta_event.target = "unknown_target"
+
+    with pytest.raises(
+        InputDataError,
+        match=(
+            "unknown source samples: unknown_source; "
+            "unknown target samples: unknown_target"
+        ),
+    ):
+        ContaminationPlotsReport(
+            species_ab_table,
+            [conta_event],
+            nrow=1,
+            ncol=1,
+            no_conta_line=False,
+            color_conta_species=False,
+        )
+
+
+def test_constructor_truncates_unknown_sample_names(
+    species_ab_table: pd.DataFrame,
+) -> None:
+    """Test that long lists of unknown sample names are truncated."""
+    conta_events = [
+        ContaminationEvent(
+            source=f"unknown_source_{i}",
+            target="target",
+            rate=0.1,
+            probability=0.9,
+        )
+        for i in range(6)
+    ]
+
+    with pytest.raises(InputDataError) as exc_info:
+        ContaminationPlotsReport(
+            species_ab_table,
+            conta_events,
+            nrow=1,
+            ncol=1,
+            no_conta_line=False,
+            color_conta_species=False,
+        )
+
+    message = str(exc_info.value)
+
+    assert "6 sample names (showing 5):" in message
+    assert "unknown_source_0" in message
+    assert "unknown_source_4" in message
+    assert "unknown_source_5" not in message
 
 
 # ---------------------------------------------------------------------------
