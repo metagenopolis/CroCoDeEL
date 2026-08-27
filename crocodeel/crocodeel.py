@@ -272,8 +272,8 @@ def add_search_arguments(
         default=search_conta_defaults.RATE_CUTOFF,
         metavar="RATE_CUTOFF",
         help=(
-            "Only report events with a contamination rate greater "
-            "than %(metavar)s "
+            "Only report events with a contamination rate strictly "
+            "greater than %(metavar)s "
             "(default: %(default).0f)"
         ),
     )

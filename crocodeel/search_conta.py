@@ -175,7 +175,7 @@ def _passes_cutoffs(
     """Return whether an event passes the probability and rate cutoffs."""
     return (
         conta_event.probability >= probability_cutoff
-        and conta_event.rate >= rate_cutoff
+        and conta_event.rate > rate_cutoff
     )
 
 
