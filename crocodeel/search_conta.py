@@ -238,7 +238,7 @@ class ContaminationSearcherWorker:
 
 # Initialize the worker once per process so the abundance table and model
 # are sent to each worker only once, rather than being re-serialized per chunk.
-_worker: ContaminationSearcherWorker | None = None
+_worker: ContaminationSearcherWorker | None = None  # pylint: disable=invalid-name
 
 
 def _init_worker(
@@ -250,7 +250,7 @@ def _init_worker(
     Used as a ``multiprocessing.Pool`` initializer, so it runs exactly once
     per worker process.
     """
-    global _worker
+    global _worker  # pylint: disable=global-statement
     _worker = ContaminationSearcherWorker(species_ab_table, rf_model)
 
 

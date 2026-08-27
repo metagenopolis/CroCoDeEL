@@ -356,7 +356,7 @@ def _init_worker(species_ab_table: pd.DataFrame) -> None:
     Used as a ``multiprocessing.Pool`` initializer, so it runs exactly once
     per worker process.
     """
-    global _worker
+    global _worker  # pylint: disable=global-statement
     _worker = FeaturesComputerWorker(species_ab_table)
 
 

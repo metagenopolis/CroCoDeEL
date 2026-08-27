@@ -33,13 +33,13 @@ class _UnitSlopeRegression(RegressorMixin, BaseEstimator):
         self.coef_ = None
         self.intercept_ = None
 
-    def fit(self, X, y):
+    def fit(self, X, y):  # pylint: disable=invalid-name
         """Fit the regression by estimating the intercept."""
         self.coef_ = 1
         self.intercept_ = np.mean(y - X)
         return self
 
-    def predict(self, X):
+    def predict(self, X):  # pylint: disable=invalid-name
         """Predict values using the fitted unit-slope regression."""
         return X + self.intercept_
 
