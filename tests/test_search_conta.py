@@ -214,13 +214,17 @@ def test_search_conta_defaults() -> None:
 @pytest.mark.parametrize(
     "probability, rate, probability_cutoff, rate_cutoff, expected",
     [
+        # Probability cutoff is inclusive.
         (0.9, 0.1, 0.5, 0.0, True),
         (0.5, 0.1, 0.5, 0.0, True),
-        (0.9, 0.1, 0.9, 0.1, True),
+        (0.9, 0.1, 0.9, 0.0, True),
+        # Rate cutoff is strict.
+        (0.9, 0.1, 0.5, 0.1, False),
         (0.49, 0.1, 0.5, 0.0, False),
         (0.9, 0.1, 0.95, 0.0, False),
         (0.9, 0.1, 0.5, 0.2, False),
-        (0.5, 0.0, 0.5, 0.0, True),
+        # Zero contamination rate is never accepted.
+        (0.5, 0.0, 0.5, 0.0, False),
     ],
 )
 def test_passes_cutoffs(
