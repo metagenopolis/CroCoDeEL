@@ -34,41 +34,44 @@ def test_contamination_event_defaults() -> None:
 
 
 def test_round_conta_rate_zero() -> None:
-    """Test that zero is returned unchanged."""
-    assert round_conta_rate(0) == 0
+    """Test that zero is rejected."""
+    with pytest.raises(
+        ValueError,
+        match="Contamination rate must be strictly positive",
+    ):
+        round_conta_rate(0)
 
 
 @pytest.mark.parametrize(
     "rate, expected",
     [
-        (0, 0),
-        (0.000123456, 0.000123),
-        (0.00123456, 0.00123),
         (0.0123456, 0.0123),
         (0.123456, 0.123),
-        (0.9999, 1.00),
+        (1.23456, 1.23),
+        (12.3456, 12.3),
+        (99.99, 100.0),
     ],
 )
 def test_round_conta_rate(
     rate: float,
     expected: float,
 ) -> None:
-    """Test rounding contamination rates to three significant digits."""
+    """Test rounding percentage rates to three significant digits."""
     assert round_conta_rate(rate) == pytest.approx(expected)
 
 
 @pytest.mark.parametrize(
     "rate, significant_digits, expected",
     [
-        (0.00123456, 2, 0.0012),
-        (0.00123456, 3, 0.00123),
-        (0.00123456, 4, 0.001235),
         (0.123456, 2, 0.12),
         (0.123456, 3, 0.123),
         (0.123456, 4, 0.1235),
-        (0.99999, 2, 1.0),
-        (0.99999, 3, 1.0),
-        (0.99999, 4, 1.0),
+        (12.3456, 2, 12.0),
+        (12.3456, 3, 12.3),
+        (12.3456, 4, 12.35),
+        (99.999, 2, 100.0),
+        (99.999, 3, 100.0),
+        (99.999, 4, 100.0),
     ],
 )
 def test_round_conta_rate_significant_digits(
@@ -86,10 +89,10 @@ def test_round_conta_rate_significant_digits(
 @pytest.mark.parametrize(
     "rate, expected",
     [
-        (0.0009999, 0.001),
-        (0.009999, 0.01),
         (0.09999, 0.1),
         (0.9999, 1.0),
+        (9.999, 10.0),
+        (99.99, 100.0),
     ],
 )
 def test_round_conta_rate_magnitude_boundaries(
