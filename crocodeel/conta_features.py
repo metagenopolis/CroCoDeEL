@@ -5,9 +5,9 @@ from typing import ClassVar, Final, Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator, RegressorMixin
-from sklearn.linear_model import RANSACRegressor
 from sklearn.neighbors import NearestNeighbors
+
+from crocodeel.ransac import fit_unit_slope_ransac
 
 
 @dataclass
@@ -19,40 +19,6 @@ class ContaminationFeatures:
     values: np.ndarray
     conta_line_offset: float
     conta_line_species: list[str]
-
-
-class _UnitSlopeRegression(RegressorMixin, BaseEstimator):
-    """Linear regression constrained to a unit slope.
-
-    This estimator fits a regression line of the form ``y = x + b``,
-    where the slope is fixed to one and only the intercept is estimated.
-    """
-
-    def __init__(self):
-        """Initialize the regression coefficients."""
-        self.coef_ = None
-        self.intercept_ = None
-
-    def fit(self, X, y):  # pylint: disable=invalid-name
-        """Fit the regression by estimating the intercept."""
-        self.coef_ = 1
-        self.intercept_ = np.mean(y - X)
-        return self
-
-    def predict(self, X):  # pylint: disable=invalid-name
-        """Predict values using the fitted unit-slope regression."""
-        return X + self.intercept_
-
-    def score(self, X, y, sample_weight=None):
-        """Calculate the negative mean squared error of predictions.
-
-        The negative value follows the scikit-learn convention that higher
-        scores indicate better model performance.
-        """
-        squared_errors = (y - self.predict(X)) ** 2
-        if sample_weight is None:
-            return -float(np.mean(squared_errors))
-        return -float(np.average(squared_errors, weights=sample_weight))
 
 
 class ContaminationFeatureExtractor:
@@ -67,13 +33,10 @@ class ContaminationFeatureExtractor:
     def __init__(self, species_ab_table: pd.DataFrame):
         self.species_ab_table = species_ab_table
 
-        self.ransac = RANSACRegressor(
-            estimator=_UnitSlopeRegression(),
-            min_samples=2,
-            max_trials=self.RANSAC_MAX_TRIALS,
-            random_state=self.RANSAC_RANDOM_STATE,
-            residual_threshold=self.RANSAC_RESIDUAL_THRESHOLD,
-        )
+        # Number of RANSAC trials used for the current sample pair, kept
+        # between _estimate_conta_line_offset() and _compute_features()
+        # because it is one of the features the model was trained on.
+        self.ransac_num_trials = 0
 
     def extract(self, source: str, target: str) -> Optional[ContaminationFeatures]:
         """Extract contamination features for a source-target sample pair.
@@ -221,16 +184,21 @@ class ContaminationFeatureExtractor:
         The contamination line is constrained to have a slope of one in
         log10 abundance space. RANSAC is used to identify species that
         belong to the line and to estimate its offset.
+
+        Raises:
+            ValueError: if RANSAC found no valid consensus set.
         """
-        self.ransac.fit(
-            conta_line_candidate_species_ab[:, [0]],  # target
-            conta_line_candidate_species_ab[:, [1]],  # source
+        inlier_mask, conta_line_offset, self.ransac_num_trials = (
+            fit_unit_slope_ransac(
+                conta_line_candidate_species_ab[:, 0],  # target
+                conta_line_candidate_species_ab[:, 1],  # source
+                max_trials=self.RANSAC_MAX_TRIALS,
+                residual_threshold=self.RANSAC_RESIDUAL_THRESHOLD,
+                random_state=self.RANSAC_RANDOM_STATE,
+            )
         )
 
-        conta_line_species_ab = conta_line_candidate_species_ab[
-            self.ransac.inlier_mask_
-        ]
-        conta_line_offset = self.ransac.estimator_.intercept_
+        conta_line_species_ab = conta_line_candidate_species_ab[inlier_mask]
 
         return conta_line_species_ab, conta_line_offset
 
@@ -290,7 +258,7 @@ class ContaminationFeatureExtractor:
 
         return np.array(
             [
-                self.ransac.n_trials_,
+                self.ransac_num_trials,
                 num_species_conta_line,
                 mean_distance_to_the_contamination_line,
                 mean_distance_to_nearest_neighbors,

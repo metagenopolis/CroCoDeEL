@@ -2,64 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from crocodeel.conta_features import (ContaminationFeatureExtractor,
-                                      _UnitSlopeRegression)
-
-# ---------------------------------------------------------------------------
-# _UnitSlopeRegression
-# ---------------------------------------------------------------------------
-
-
-def test_unit_slope_regression_fit():
-    """Test fitting a unit-slope regression on log-transformed abundances."""
-    model = _UnitSlopeRegression()
-
-    X = np.array([[-6.0], [-5.0], [-4.0]])
-    y = np.array([[-4.0], [-3.0], [-2.0]])
-
-    result = model.fit(X, y)
-
-    # The data follow y = x + 2.
-    assert result is model
-    assert model.coef_ == 1
-    assert model.intercept_ == pytest.approx(2.0)
-
-
-def test_unit_slope_regression_predict():
-    """Test predictions on log-transformed abundances."""
-    model = _UnitSlopeRegression()
-
-    X = np.array([[-6.0], [-5.0], [-4.0]])
-    y = np.array([[-4.0], [-3.0], [-2.0]])
-
-    model.fit(X, y)
-
-    result = model.predict(np.array([[-3.0], [-2.0]]))
-
-    # The fitted contamination line is y = x + 2.
-    expected = np.array([[-1.0], [0.0]])
-
-    np.testing.assert_array_equal(result, expected)
-
-
-def test_unit_slope_regression_score():
-    """Test the negative mean squared error score."""
-    model = _UnitSlopeRegression()
-
-    X_train = np.array([[-6.0], [-5.0], [-4.0]])
-    y_train = np.array([[-4.0], [-3.0], [-2.0]])
-
-    model.fit(X_train, y_train)
-
-    X = np.array([[-3.0], [-2.0]])
-    y = np.array([[-1.0], [0.5]])
-
-    # Predictions are [-1.0, 0.0], giving an MSE of 0.125.
-    # score() returns the negative MSE.
-    result = model.score(X, y)
-
-    assert result == pytest.approx(-0.125)
-
+from crocodeel.conta_features import ContaminationFeatureExtractor
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -291,7 +234,7 @@ def test_compute_features(
         lambda mean_ab, data: 0.75,
     )
 
-    feature_extractor.ransac.n_trials_ = 100
+    feature_extractor.ransac_num_trials = 100
 
     features = feature_extractor._compute_features(
         sample_pair_species_ab,
@@ -348,7 +291,7 @@ def test_compute_features_without_source_specific_species(
         lambda data: 0.25,
     )
 
-    feature_extractor.ransac.n_trials_ = 100
+    feature_extractor.ransac_num_trials = 100
 
     features = feature_extractor._compute_features(
         sample_pair_species_ab,
