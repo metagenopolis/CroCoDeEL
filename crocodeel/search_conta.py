@@ -3,11 +3,11 @@
 import importlib.resources
 import logging
 import warnings
-from itertools import product
+from itertools import batched, product
 from multiprocessing import Pool
 from pathlib import Path
 from time import perf_counter
-from typing import BinaryIO, Final, Iterator
+from typing import BinaryIO, Final, Iterator, Sequence
 
 import joblib
 import numpy as np
@@ -17,8 +17,10 @@ from sklearn.exceptions import InconsistentVersionWarning  # type: ignore[attr-d
 from tqdm import tqdm
 
 from crocodeel.conta_event import ContaminationEvent
-from crocodeel.conta_features import (ContaminationFeatureExtractor,
-                                      ContaminationFeatures)
+from crocodeel.conta_features import (
+    ContaminationFeatureExtractor,
+    ContaminationFeatures,
+)
 from crocodeel.exceptions import InputDataError
 
 SamplePair = tuple[str, str]
@@ -103,6 +105,7 @@ def _load_rf_model(
         )
 
     return rf_model
+
 
 def _prepare_search(
     species_ab_table: pd.DataFrame,
@@ -196,7 +199,7 @@ class Defaults:
 
 
 class ContaminationSearcherWorker:
-    """Classify individual sample pairs for contamination."""
+    """Classify batches of sample pairs for contamination."""
 
     def __init__(
         self,
@@ -206,38 +209,60 @@ class ContaminationSearcherWorker:
         self.feature_extractor = ContaminationFeatureExtractor(species_ab_table)
         self.rf_classifier = rf_classifier
 
-    def classify_sample_pair(
+    def classify_sample_pairs(
         self,
-        sample_pair: SamplePair,
-    ) -> ContaminationEvent | None:
-        """Classify a sample pair and return a contamination event if detected."""
-        source, target = sample_pair
+        sample_pairs: Sequence[SamplePair],
+    ) -> list[ContaminationEvent]:
+        """Classify a batch of sample pairs.
 
-        if source == target:
-            return None
+        Features are extracted individually because feature extraction depends
+        on the source and target samples. The resulting feature matrix is then
+        passed to the Random Forest in a single call to avoid paying the
+        prediction overhead once per sample pair.
+        """
+        candidates: list[tuple[SamplePair, ContaminationFeatures]] = []
 
-        features: ContaminationFeatures | None = self.feature_extractor.extract(
-            source,
-            target,
+        for sample_pair in sample_pairs:
+            source, target = sample_pair
+
+            if source == target:
+                continue
+
+            features = self.feature_extractor.extract(
+                source,
+                target,
+            )
+
+            if features is not None:
+                candidates.append((sample_pair, features))
+
+        if not candidates:
+            return []
+
+        feature_matrix = np.vstack(
+            [features.values for _, features in candidates],
         )
+        conta_probabilities = self.rf_classifier.predict_proba(
+            feature_matrix,
+        )[:, 1]
 
-        if features is None:
-            return None
+        return [
+            ContaminationEvent(
+                source=source,
+                target=target,
+                rate=10 ** (-features.conta_line_offset),
+                probability=float(conta_probability),
+                conta_line_species=features.conta_line_species,
+            )
+            for ((source, target), features), conta_probability in zip(
+                candidates,
+                conta_probabilities,
+            )
+        ]
 
-        probabilities = self.rf_classifier.predict_proba(features.values.reshape(1, -1))
-        conta_probability = float(probabilities[0, 1])
 
-        return ContaminationEvent(
-            source=source,
-            target=target,
-            rate=10 ** (-features.conta_line_offset),
-            probability=conta_probability,
-            conta_line_species=features.conta_line_species,
-        )
-
-
-# Initialize the worker once per process so the abundance table and model
-# are sent to each worker only once, rather than being re-serialized per chunk.
+# Each worker creates its feature extractor and keeps its own model instance.
+# This avoids repeatedly serializing these objects when batches are submitted.
 _worker: ContaminationSearcherWorker | None = None  # pylint: disable=invalid-name
 
 
@@ -245,19 +270,33 @@ def _init_worker(
     species_ab_table: pd.DataFrame,
     rf_model: RandomForestClassifier,
 ) -> None:
-    """Build the per-process contamination-search worker.
+    """Initialize the contamination-search worker for a process.
 
-    Used as a ``multiprocessing.Pool`` initializer, so it runs exactly once
-    per worker process.
+    The pool calls this function once when each worker process starts. The
+    abundance table and Random Forest are therefore initialized once per
+    process rather than being sent with every batch of sample pairs.
     """
     global _worker  # pylint: disable=global-statement
-    _worker = ContaminationSearcherWorker(species_ab_table, rf_model)
+    _worker = ContaminationSearcherWorker(
+        species_ab_table,
+        rf_model,
+    )
 
 
-def _classify_sample_pair(sample_pair: SamplePair) -> ContaminationEvent | None:
-    """Classify one sample pair using the current process's worker."""
+def _classify_sample_pairs(
+    sample_pairs: Sequence[SamplePair],
+) -> tuple[int, list[ContaminationEvent]]:
+    """Classify a batch of sample pairs using the current process's worker.
+
+    Return the batch size alongside the events so the progress bar can track
+    the number of sample pairs inspected rather than the number of batches.
+    """
     assert _worker is not None
-    return _worker.classify_sample_pair(sample_pair)
+
+    return (
+        len(sample_pairs),
+        _worker.classify_sample_pairs(sample_pairs),
+    )
 
 
 class ContaminationSearcherDriver:
@@ -289,19 +328,27 @@ class ContaminationSearcherDriver:
         """Search all sample pairs and return detected contamination events."""
         conta_events: list[ContaminationEvent] = []
 
+        # Group sample pairs before submitting them to the pool so that each
+        # worker can extract features and run the Random Forest on one batch.
+        sample_pair_batches = batched(
+            self.all_sample_pairs,
+            self.DEFAULT_CHUNKSIZE,
+        )
+
         with Pool(
             processes=self.nproc,
             initializer=_init_worker,
             initargs=(self.species_ab_table, self.rf_model),
         ) as pool:
+            # Each pool task is already one batch, so use chunksize=1 to avoid
+            # combining several batches into a larger scheduling unit.
             results = pool.imap_unordered(
-                _classify_sample_pair,
-                self.all_sample_pairs,
-                chunksize=self.DEFAULT_CHUNKSIZE,
+                _classify_sample_pairs,
+                sample_pair_batches,
+                chunksize=1,
             )
 
             pbar = tqdm(
-                results,
                 total=self.num_sample_pairs,
                 leave=False,
                 bar_format=(
@@ -311,13 +358,26 @@ class ContaminationSearcherDriver:
                 ),
             )
 
-            for conta_event in pbar:
-                if conta_event is not None and _passes_cutoffs(
-                    conta_event,
-                    self.probability_cutoff,
-                    self.rate_cutoff,
-                ):
-                    conta_events.append(conta_event)
-                    pbar.set_postfix_str(f"{len(conta_events)} conta events found")
+            # The pool returns batches as soon as workers finish them. Update
+            # the progress bar by the number of pairs in each completed batch.
+            with pbar:
+                for num_sample_pairs, batch_conta_events in results:
+                    pbar.update(num_sample_pairs)
+
+                    passing_conta_events = [
+                        conta_event
+                        for conta_event in batch_conta_events
+                        if _passes_cutoffs(
+                            conta_event,
+                            self.probability_cutoff,
+                            self.rate_cutoff,
+                        )
+                    ]
+
+                    if passing_conta_events:
+                        conta_events.extend(passing_conta_events)
+                        pbar.set_postfix_str(
+                            f"{len(conta_events)} conta events found",
+                        )
 
         return conta_events

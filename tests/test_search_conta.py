@@ -54,11 +54,6 @@ def conta_event() -> ContaminationEvent:
 # ---------------------------------------------------------------------------
 
 
-# ---------------------------------------------------------------------------
-# _load_rf_model()
-# ---------------------------------------------------------------------------
-
-
 def test_load_rf_model() -> None:
     """Test loading the packaged Random Forest model."""
     model_fp = importlib.resources.files("crocodeel").joinpath(
@@ -274,51 +269,75 @@ def test_worker_init(species_ab_table: pd.DataFrame) -> None:
     )
 
 
-def test_worker_ignores_same_sample(
+def test_worker_classifies_sample_pairs(
     species_ab_table: pd.DataFrame,
 ) -> None:
-    """Test that a sample is never reported as contaminating itself."""
+    """Test batch classification and a single batched predict_proba call."""
     classifier = MagicMock()
+    classifier.predict_proba.return_value = np.array([
+        [0.1, 0.9],
+        [0.8, 0.2],
+    ])
 
     worker = ContaminationSearcherWorker(
         species_ab_table,
         classifier,
     )
 
-    result = worker.classify_sample_pair(
-        ("sample1", "sample1"),
-    )
+    features_1 = MagicMock()
+    features_1.values = np.array([1.0, 2.0, 3.0])
+    features_1.conta_line_offset = 2.0
+    features_1.conta_line_species = ["species1"]
 
-    assert result is None
-    classifier.predict_proba.assert_not_called()
-
-
-def test_worker_returns_none_when_features_cannot_be_extracted(
-    species_ab_table: pd.DataFrame,
-) -> None:
-    """Test that failed feature extraction produces no event."""
-    classifier = MagicMock()
-
-    worker = ContaminationSearcherWorker(
-        species_ab_table,
-        classifier,
-    )
+    features_2 = MagicMock()
+    features_2.values = np.array([4.0, 5.0, 6.0])
+    features_2.conta_line_offset = 1.0
+    features_2.conta_line_species = ["species2"]
 
     worker.feature_extractor = MagicMock()
-    worker.feature_extractor.extract.return_value = None
+    worker.feature_extractor.extract.side_effect = [
+        features_1,
+        features_2,
+    ]
 
-    result = worker.classify_sample_pair(
-        ("sample1", "sample2"),
+    result = worker.classify_sample_pairs(
+        [
+            ("sample1", "sample2"),
+            ("sample2", "sample1"),
+        ],
     )
 
-    assert result is None
-    classifier.predict_proba.assert_not_called()
+    assert len(result) == 2
+
+    assert result[0].source == "sample1"
+    assert result[0].target == "sample2"
+    assert result[0].probability == pytest.approx(0.9)
+    assert result[0].rate == pytest.approx(0.01)
+    assert result[0].conta_line_species == ["species1"]
+
+    assert result[1].source == "sample2"
+    assert result[1].target == "sample1"
+    assert result[1].probability == pytest.approx(0.2)
+    assert result[1].rate == pytest.approx(0.1)
+    assert result[1].conta_line_species == ["species2"]
+
+    classifier.predict_proba.assert_called_once()
+
+    prediction_input = classifier.predict_proba.call_args.args[0]
+    assert prediction_input.shape == (2, 3)
+    np.testing.assert_array_equal(
+        prediction_input,
+        np.array([
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+        ]),
+    )
 
 
-def test_worker_classifies_sample_pair(
+def test_worker_skips_invalid_sample_pairs(
     species_ab_table: pd.DataFrame,
 ) -> None:
-    """Test classification of a sample pair."""
+    """Test that self-pairs and failed feature extraction are skipped."""
     classifier = MagicMock()
     classifier.predict_proba.return_value = np.array([[0.1, 0.9]])
 
@@ -330,31 +349,27 @@ def test_worker_classifies_sample_pair(
     features = MagicMock()
     features.values = np.array([1.0, 2.0, 3.0])
     features.conta_line_offset = 2.0
-    features.conta_line_species = ["species1", "species2"]
+    features.conta_line_species = ["species1"]
 
     worker.feature_extractor = MagicMock()
-    worker.feature_extractor.extract.return_value = features
+    worker.feature_extractor.extract.side_effect = [
+        features,
+        None,
+    ]
 
-    result = worker.classify_sample_pair(
-        ("sample1", "sample2"),
+    result = worker.classify_sample_pairs(
+        [
+            ("sample1", "sample1"),
+            ("sample1", "sample2"),
+            ("sample2", "sample1"),
+        ],
     )
 
-    assert result is not None
-    assert result.source == "sample1"
-    assert result.target == "sample2"
-    assert result.probability == pytest.approx(0.9)
-    assert result.rate == pytest.approx(0.01)
-    assert result.conta_line_species == ["species1", "species2"]
+    assert len(result) == 1
+    assert result[0].source == "sample1"
+    assert result[0].target == "sample2"
 
     classifier.predict_proba.assert_called_once()
-
-    prediction_input = classifier.predict_proba.call_args.args[0]
-
-    assert prediction_input.shape == (1, 3)
-    np.testing.assert_array_equal(
-        prediction_input,
-        np.array([[1.0, 2.0, 3.0]]),
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -799,15 +814,16 @@ def test_contamination_searcher_driver_search_contamination(
 
     pool = MagicMock()
 
-    pbar = MagicMock()
-    pbar.__iter__.return_value = iter(
+    # Workers return one (number of pairs inspected, events found) pair per
+    # batch, so that the progress bar can still count sample pairs.
+    pool.__enter__.return_value.imap_unordered.return_value = iter(
         [
-            valid_event,
-            None,
-            low_probability_event,
-            low_rate_event,
+            (2, [valid_event, low_probability_event]),
+            (1, [low_rate_event]),
         ]
     )
+
+    pbar = MagicMock()
 
     with (
         patch(
@@ -823,11 +839,18 @@ def test_contamination_searcher_driver_search_contamination(
 
     assert result == [valid_event]
 
+    assert [call.args[0] for call in pbar.update.call_args_list] == [2, 1]
+
     mock_pool.assert_called_once_with(
         processes=2,
         initializer=search_conta._init_worker,
         initargs=(species_ab_table, rf_model),
     )
+
+    mock_imap = pool.__enter__.return_value.imap_unordered
+    mock_imap.assert_called_once()
+    assert mock_imap.call_args.args[0] is search_conta._classify_sample_pairs
+    assert mock_imap.call_args.kwargs["chunksize"] == 1
 
     mock_tqdm.assert_called_once()
     assert mock_tqdm.call_args.kwargs["total"] == 3
@@ -839,7 +862,7 @@ def test_contamination_searcher_driver_search_contamination(
 
 
 # ---------------------------------------------------------------------------
-# _init_worker() and _classify_sample_pair()
+# _init_worker() and _classify_sample_pairs()
 # ---------------------------------------------------------------------------
 
 
@@ -858,18 +881,35 @@ def test_init_worker_builds_module_level_worker(
     assert search_conta._worker.rf_classifier is classifier
 
 
-def test_classify_sample_pair_delegates_to_module_level_worker(
+def test_classify_sample_pairs_delegates_to_module_level_worker(
     species_ab_table: pd.DataFrame,
 ) -> None:
-    """Test that _classify_sample_pair delegates to the module-level worker."""
+    """Test that _classify_sample_pairs delegates to the module-level worker."""
     classifier = MagicMock()
 
     search_conta._init_worker(species_ab_table, classifier)
 
-    # Same sample on both sides always returns None, regardless of the
-    # classifier - this is enough to confirm delegation to the worker
-    # built by _init_worker() without duplicating the more thorough
-    # ContaminationSearcherWorker tests above.
-    result = search_conta._classify_sample_pair(("sample1", "sample1"))
+    events = [
+        ContaminationEvent(
+            source="sample1",
+            target="sample2",
+            rate=0.1,
+            probability=0.9,
+            conta_line_species=[],
+        ),
+    ]
+    search_conta._worker.classify_sample_pairs = MagicMock(
+        return_value=events,
+    )
 
-    assert result is None
+    sample_pairs = [
+        ("sample1", "sample2"),
+        ("sample2", "sample1"),
+    ]
+
+    result = search_conta._classify_sample_pairs(sample_pairs)
+
+    assert result == (2, events)
+    search_conta._worker.classify_sample_pairs.assert_called_once_with(
+        sample_pairs,
+    )
