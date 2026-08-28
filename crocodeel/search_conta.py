@@ -297,7 +297,7 @@ def _classify_sample_pairs(
 class ContaminationSearcherDriver:
     """Run contamination searches using one or more worker processes."""
 
-    DEFAULT_CHUNKSIZE: Final[int] = 50
+    DEFAULT_CHUNKSIZE: Final[int] = 100
 
     def __init__(
         self,
