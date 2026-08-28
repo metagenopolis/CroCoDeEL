@@ -28,7 +28,7 @@ packages = [{ include = "crocodeel" }]
 crocodeel = "crocodeel.crocodeel:main"
 
 [tool.poetry.dependencies]
-python = ">=3.12"
+python = ">=3.12,<3.14"
 pandas = "^2.3"
 numpy = "^2.4"
 joblib = "^1.5"
