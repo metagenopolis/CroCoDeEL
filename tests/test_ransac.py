@@ -8,7 +8,7 @@ from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.linear_model import RANSACRegressor
 
 from crocodeel.conta_features import ContaminationFeatureExtractor
-from crocodeel.ransac import fit_unit_slope_ransac
+from crocodeel.ransac import _dynamic_max_trials, fit_unit_slope_ransac
 
 MAX_TRIALS = ContaminationFeatureExtractor.RANSAC_MAX_TRIALS
 RESIDUAL_THRESHOLD = ContaminationFeatureExtractor.RANSAC_RESIDUAL_THRESHOLD
@@ -137,6 +137,51 @@ def test_intercept_is_refitted_on_the_whole_consensus_set() -> None:
 
     assert inlier_mask.all()
     assert intercept == pytest.approx((ordinate - abscissa).mean())
+
+
+def test_stop_probability_controls_when_the_search_ends() -> None:
+    """Test that the confidence requirement decides how long the search runs.
+
+    Half of these points lie on the identity line and half on y = x + 1.5.
+    Demanding no confidence stops as soon as any candidate is accepted, on
+    whichever line the first sampled pair happened to fall; the default keeps
+    looking and finds the contamination line.
+    """
+    abscissa = np.array([-9.0, -8.0, -7.0, -2.0, -2.0, -1.0, 0.0, 0.0, 1.0, 1.0])
+    ordinate = np.array([-9.0, -8.0, -5.5, -0.5, -2.0, 0.5, 1.5, 1.5, 1.0, 1.0])
+
+    _, thorough_intercept, thorough_trials = fit_unit_slope_ransac(
+        abscissa,
+        ordinate,
+        max_trials=MAX_TRIALS,
+        residual_threshold=RESIDUAL_THRESHOLD,
+        random_state=RANDOM_STATE,
+    )
+    _, immediate_intercept, immediate_trials = fit_unit_slope_ransac(
+        abscissa,
+        ordinate,
+        max_trials=MAX_TRIALS,
+        residual_threshold=RESIDUAL_THRESHOLD,
+        random_state=RANDOM_STATE,
+        stop_probability=0.0,
+    )
+
+    assert immediate_trials == 1
+    assert immediate_intercept == pytest.approx(0.0)
+
+    assert thorough_trials > immediate_trials
+    assert thorough_intercept == pytest.approx(1.5)
+
+
+def test_dynamic_max_trials_never_divides_by_zero() -> None:
+    """Test the guard for a consensus set with no inliers.
+
+    fit_unit_slope_ransac() cannot reach this: the stopping criterion is only
+    consulted once a candidate has been accepted, which requires at least one
+    inlier. The guard is kept because sklearn has it, and because without it
+    the ratio would divide by log(1) and yield -inf rather than a trial count.
+    """
+    assert _dynamic_max_trials(0, 8, 2, 0.99) == float("inf")
 
 
 # ---------------------------------------------------------------------------
