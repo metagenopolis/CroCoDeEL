@@ -33,17 +33,17 @@ class TestData:
         str(files("crocodeel") / "test_data" / "results" / "contamination_events.pdf")
     )
 
-    EXPECTED_PDF_REPORT_SIZE: Final[int] = EXPECTED_PDF_REPORT_FILE.stat().st_size
-
     PDF_REPORT_SIZE_TOLERANCE: Final[float] = 0.02
 
-    MIN_PDF_REPORT_SIZE: Final[int] = int(
-        (1.0 - PDF_REPORT_SIZE_TOLERANCE) * EXPECTED_PDF_REPORT_SIZE
-    )
+    @classmethod
+    def pdf_report_size_bounds(cls) -> tuple[int, int]:
+        """Return the size range accepted for the generated PDF report."""
+        expected_size = cls.EXPECTED_PDF_REPORT_FILE.stat().st_size
 
-    MAX_PDF_REPORT_SIZE: Final[int] = int(
-        (1.0 + PDF_REPORT_SIZE_TOLERANCE) * EXPECTED_PDF_REPORT_SIZE
-    )
+        return (
+            int((1.0 - cls.PDF_REPORT_SIZE_TOLERANCE) * expected_size),
+            int((1.0 + cls.PDF_REPORT_SIZE_TOLERANCE) * expected_size),
+        )
 
 
 class SelfTest:
@@ -181,19 +181,20 @@ class SelfTest:
         )
 
         pdf_report_size = pdf_report_fp.stat().st_size
+        min_size, max_size = TestData.pdf_report_size_bounds()
 
-        if pdf_report_size < TestData.MIN_PDF_REPORT_SIZE:
+        if pdf_report_size < min_size:
             raise SelfTestError(
                 "PDF report appears too small: "
                 f"size is {pdf_report_size} bytes "
-                f"(expected around {TestData.EXPECTED_PDF_REPORT_SIZE} bytes)."
+                f"(expected between {min_size} and {max_size} bytes)."
             )
 
-        if pdf_report_size > TestData.MAX_PDF_REPORT_SIZE:
+        if pdf_report_size > max_size:
             raise SelfTestError(
                 "PDF report appears too large: "
                 f"size is {pdf_report_size} bytes "
-                f"(expected around {TestData.EXPECTED_PDF_REPORT_SIZE} bytes)."
+                f"(expected between {min_size} and {max_size} bytes)."
             )
 
         logging.info("PDF report size is within the expected range")

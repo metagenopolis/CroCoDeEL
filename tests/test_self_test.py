@@ -290,9 +290,8 @@ def test_check_results_rejects_pdf_that_is_too_small(
     conta_events_fp.write_bytes(
         TestData.EXPECTED_CONTA_EVENTS_FILE.read_bytes()
     )
-    pdf_report_fp.write_bytes(
-        b"0" * (TestData.MIN_PDF_REPORT_SIZE - 1)
-    )
+    min_size, _ = TestData.pdf_report_size_bounds()
+    pdf_report_fp.write_bytes(b"0" * (min_size - 1))
 
     with pytest.raises(
         SelfTestError,
@@ -314,9 +313,8 @@ def test_check_results_accepts_minimum_pdf_size(
     conta_events_fp.write_bytes(
         TestData.EXPECTED_CONTA_EVENTS_FILE.read_bytes()
     )
-    pdf_report_fp.write_bytes(
-        b"0" * TestData.MIN_PDF_REPORT_SIZE
-    )
+    min_size, _ = TestData.pdf_report_size_bounds()
+    pdf_report_fp.write_bytes(b"0" * min_size)
 
     SelfTest._check_results(
         conta_events_fp,
@@ -334,9 +332,8 @@ def test_check_results_rejects_pdf_that_is_too_large(
     conta_events_fp.write_bytes(
         TestData.EXPECTED_CONTA_EVENTS_FILE.read_bytes()
     )
-    pdf_report_fp.write_bytes(
-        b"0" * (TestData.MAX_PDF_REPORT_SIZE + 1)
-    )
+    _, max_size = TestData.pdf_report_size_bounds()
+    pdf_report_fp.write_bytes(b"0" * (max_size + 1))
 
     with pytest.raises(
         SelfTestError,
@@ -358,9 +355,8 @@ def test_check_results_accepts_maximum_pdf_size(
     conta_events_fp.write_bytes(
         TestData.EXPECTED_CONTA_EVENTS_FILE.read_bytes()
     )
-    pdf_report_fp.write_bytes(
-        b"0" * TestData.MAX_PDF_REPORT_SIZE
-    )
+    _, max_size = TestData.pdf_report_size_bounds()
+    pdf_report_fp.write_bytes(b"0" * max_size)
 
     SelfTest._check_results(
         conta_events_fp,
