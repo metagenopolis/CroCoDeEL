@@ -153,12 +153,14 @@ def positive_float(value: str) -> float:
 
     return fvalue
 
+
 def get_available_cpu_count() -> int:
     """Return the number of CPUs available to the current process."""
     if hasattr(os, "sched_getaffinity"):
         return len(os.sched_getaffinity(0))
 
     return multiprocessing.cpu_count()
+
 
 def add_abundance_table_arguments(
     parser: argparse.ArgumentParser,
