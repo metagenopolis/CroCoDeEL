@@ -372,6 +372,32 @@ def test_worker_skips_invalid_sample_pairs(
     classifier.predict_proba.assert_called_once()
 
 
+def test_worker_returns_empty_list_when_no_candidates(
+    species_ab_table: pd.DataFrame,
+) -> None:
+    """Test that an empty list is returned when no pairs can be classified."""
+    classifier = MagicMock()
+
+    worker = ContaminationSearcherWorker(
+        species_ab_table,
+        classifier,
+    )
+
+    worker.feature_extractor = MagicMock()
+    worker.feature_extractor.extract.return_value = None
+
+    result = worker.classify_sample_pairs(
+        [
+            ("sample1", "sample1"),
+            ("sample1", "sample2"),
+        ],
+    )
+
+    assert result == []
+
+    classifier.predict_proba.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # _log_search_results()
 # ---------------------------------------------------------------------------
