@@ -1,8 +1,8 @@
 """Search for cross-sample contamination in metagenomic abundance data."""
 
-import importlib.resources
 import logging
 import warnings
+from importlib.resources import files
 from itertools import batched, product
 from multiprocessing import Pool
 from pathlib import Path
@@ -17,10 +17,8 @@ from sklearn.exceptions import InconsistentVersionWarning  # type: ignore[attr-d
 from tqdm import tqdm
 
 from crocodeel.conta_event import ContaminationEvent
-from crocodeel.conta_features import (
-    ContaminationFeatureExtractor,
-    ContaminationFeatures,
-)
+from crocodeel.conta_features import (ContaminationFeatureExtractor,
+                                      ContaminationFeatures)
 from crocodeel.exceptions import InputDataError
 
 SamplePair = tuple[str, str]
@@ -185,13 +183,10 @@ def _passes_cutoffs(
 class Defaults:
     """Default parameters for contamination search."""
 
+    # Packaged resources are read as real files; CroCoDeEL is not distributed
+    # as a zipapp. Use importlib.resources.as_file() if that ever changes.
     MODEL_FILE: Final[Path] = Path(
-        str(
-            importlib.resources.files().joinpath(
-                "models",
-                "crocodeel_rf_Feb2026_2.joblib",
-            )
-        )
+        str(files("crocodeel") / "models" / "crocodeel_rf_Feb2026_2.joblib")
     )
 
     PROBABILITY_CUTOFF: Final[float] = 0.5

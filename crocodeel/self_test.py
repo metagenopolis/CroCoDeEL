@@ -1,8 +1,8 @@
 """End-to-end installation test for CroCoDeEL."""
 
 import filecmp
-import importlib.resources
 import logging
+from importlib.resources import files
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Final
@@ -22,32 +22,15 @@ class TestData:
     """Files and expected results used by the self-test suite"""
 
     SPECIES_ABUNDANCE_TABLE: Final[Path] = Path(
-        str(
-            importlib.resources.files().joinpath(
-                "test_data",
-                "mgs_profiles_test.tsv",
-            )
-        )
+        str(files("crocodeel") / "test_data" / "mgs_profiles_test.tsv")
     )
 
     EXPECTED_CONTA_EVENTS_FILE: Final[Path] = Path(
-        str(
-            importlib.resources.files().joinpath(
-                "test_data",
-                "results",
-                "contamination_events.tsv",
-            )
-        )
+        str(files("crocodeel") / "test_data" / "results" / "contamination_events.tsv")
     )
 
     EXPECTED_PDF_REPORT_FILE: Final[Path] = Path(
-        str(
-            importlib.resources.files().joinpath(
-                "test_data",
-                "results",
-                "contamination_events.pdf",
-            )
-        )
+        str(files("crocodeel") / "test_data" / "results" / "contamination_events.pdf")
     )
 
     EXPECTED_PDF_REPORT_SIZE: Final[int] = EXPECTED_PDF_REPORT_FILE.stat().st_size
