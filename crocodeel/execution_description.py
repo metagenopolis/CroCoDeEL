@@ -32,28 +32,22 @@ class ExecutionDescription:
         self.rate_cutoff = rate_cutoff
 
     def __str__(self) -> str:
-        exec_desc_str = (
-            f"# crocodeel version: {self.software_version}"
-            f" | rf_model: {self.rf_model_fp}"
-            f" | hostname: {self.hostname}"
-            f" | username: {self.username}"
-            f" | datetime: {self.datetime}"
-            f" | species_ab_table: {self.species_ab_table_fp}"
-        )
+        fields = [
+            ("crocodeel version", self.software_version),
+            ("rf_model", self.rf_model_fp),
+            ("hostname", self.hostname),
+            ("username", self.username),
+            ("datetime", self.datetime),
+            ("species_ab_table", self.species_ab_table_fp),
+        ]
 
         if self.species_ab_table_2_fp:
-            exec_desc_str = (
-                exec_desc_str + f" | species_ab_table_2: {self.species_ab_table_2_fp}"
-            )
+            fields.append(("species_ab_table_2", self.species_ab_table_2_fp))
 
-        exec_desc_str = (
-            exec_desc_str
-            + f" | filtering_ab_thr_factor: {self.filtering_ab_thr_factor}"
-        )
+        fields += [
+            ("filtering_ab_thr_factor", self.filtering_ab_thr_factor),
+            ("probability_cutoff", self.probability_cutoff),
+            ("rate_cutoff", self.rate_cutoff),
+        ]
 
-        exec_desc_str += (
-            f" | probability_cutoff: {self.probability_cutoff}"
-            f" | rate_cutoff: {self.rate_cutoff}"
-        )
-
-        return exec_desc_str
+        return "# " + " | ".join(f"{label}: {value}" for label, value in fields)
