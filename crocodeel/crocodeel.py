@@ -163,11 +163,10 @@ def get_available_cpu_count() -> int:
     return multiprocessing.cpu_count()
 
 
-def add_abundance_table_arguments(
+def add_species_ab_table_argument(
     parser: argparse.ArgumentParser,
-    include_second_table: bool = True,
 ) -> None:
-    """Add arguments used to specify species abundance tables."""
+    """Add the input species abundance table argument."""
     parser.add_argument(
         "-s",
         dest="species_ab_table_fp",
@@ -176,6 +175,42 @@ def add_abundance_table_arguments(
         metavar="SPECIES_ABUNDANCE_TABLE",
         help="Input TSV file corresponding to the species abundance table",
     )
+
+
+def add_conta_events_argument(
+    parser: argparse.ArgumentParser,
+) -> None:
+    """Add the output contamination events argument."""
+    parser.add_argument(
+        "-c",
+        dest="conta_events_fp",
+        type=writable_file,
+        required=True,
+        metavar="CONTAMINATION_EVENTS_FILE",
+        help="Output TSV file listing all contamination events",
+    )
+
+
+def add_pdf_report_argument(
+    parser: argparse.ArgumentParser,
+) -> None:
+    """Add the output PDF report argument."""
+    parser.add_argument(
+        "-r",
+        dest="pdf_report_fp",
+        type=writable_file,
+        required=True,
+        metavar="PDF_REPORT_FILE",
+        help="Output PDF file with scatterplots for all contamination events",
+    )
+
+
+def add_abundance_table_arguments(
+    parser: argparse.ArgumentParser,
+    include_second_table: bool = True,
+) -> None:
+    """Add arguments used to specify species abundance tables."""
+    add_species_ab_table_argument(parser)
 
     if include_second_table:
         parser.add_argument(
@@ -255,14 +290,7 @@ def add_search_arguments(
     )
 
     if include_conta_events:
-        parser.add_argument(
-            "-c",
-            dest="conta_events_fp",
-            type=writable_file,
-            required=True,
-            metavar="CONTAMINATION_EVENTS_FILE",
-            help="Output TSV file listing all contamination events",
-        )
+        add_conta_events_argument(parser)
 
     parser.add_argument(
         "--nproc",
@@ -296,14 +324,7 @@ def add_plot_arguments(
             help="Input TSV file listing all contamination events.",
         )
 
-    parser.add_argument(
-        "-r",
-        dest="pdf_report_fp",
-        type=writable_file,
-        required=True,
-        metavar="PDF_REPORT_FILE",
-        help="Output PDF file with scatterplots for all contamination events",
-    )
+    add_pdf_report_argument(parser)
 
     parser.add_argument(
         "--nrow",
@@ -349,6 +370,34 @@ def add_plot_arguments(
         dest="color_conta_species",
         action="store_true",
         help="Use a different color for species introduced by contamination",
+    )
+
+
+def add_easy_wf_arguments(
+    parser: argparse.ArgumentParser,
+) -> None:
+    """Add the arguments of the easy_wf command.
+
+    easy_wf deliberately exposes only the three mandatory files, so that the
+    common case stays a one-line command. Every other setting keeps the
+    default it has in search_conta and plot_conta; use those commands
+    directly to change any of them.
+    """
+    add_species_ab_table_argument(parser)
+    add_conta_events_argument(parser)
+    add_pdf_report_argument(parser)
+
+    parser.set_defaults(
+        species_ab_table_2_fp=None,
+        filtering_ab_thr_factor=None,
+        rf_model_fp=search_conta_defaults.MODEL_FILE,
+        probability_cutoff=search_conta_defaults.PROBABILITY_CUTOFF,
+        rate_cutoff=search_conta_defaults.RATE_CUTOFF,
+        nproc=get_available_cpu_count(),
+        nrow=plot_conta_defaults.NROW,
+        ncol=plot_conta_defaults.NCOL,
+        no_conta_line=False,
+        color_conta_species=False,
     )
 
 
@@ -500,12 +549,7 @@ def get_arguments() -> argparse.Namespace:
     add_plot_arguments(plot_conta_parser)
 
     # easy_wf
-    add_abundance_table_arguments(easy_wf_parser)
-    add_search_arguments(easy_wf_parser)
-    add_plot_arguments(
-        easy_wf_parser,
-        include_conta_events=False,
-    )
+    add_easy_wf_arguments(easy_wf_parser)
 
     # train_model
     add_abundance_table_arguments(

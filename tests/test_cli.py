@@ -20,6 +20,8 @@ from crocodeel.crocodeel import (bounded_float_01, bounded_int,
                                  run_train_model_command, set_logging,
                                  writable_file)
 from crocodeel.exceptions import InputDataError, SelfTestError
+from crocodeel.plot_conta import Defaults as plot_conta_defaults
+from crocodeel.search_conta import Defaults as search_conta_defaults
 
 # ---------------------------------------------------------------------------
 # main()
@@ -590,43 +592,15 @@ def test_set_logging(monkeypatch):
             [
                 "-s",
                 "species.tsv",
-                "-s2",
-                "species2.tsv",
-                "-m",
-                "model.joblib",
-                "--filter-low-ab",
-                "20",
                 "-c",
                 "contamination.tsv",
-                "--probability-cutoff",
-                "0.8",
-                "--rate-cutoff",
-                "0.01",
-                "--nproc",
-                "1",
                 "-r",
                 "report.pdf",
-                "--nrow",
-                "5",
-                "--ncol",
-                "6",
-                "--no-conta-line",
-                "--color-conta-species",
             ],
             {
                 "species_ab_table_fp": "species.tsv",
-                "species_ab_table_2_fp": "species2.tsv",
-                "rf_model_fp": "model.joblib",
-                "filtering_ab_thr_factor": 20.0,
                 "conta_events_fp": "contamination.tsv",
-                "probability_cutoff": 0.8,
-                "rate_cutoff": 0.01,
-                "nproc": 1,
                 "pdf_report_fp": "report.pdf",
-                "nrow": 5,
-                "ncol": 6,
-                "no_conta_line": True,
-                "color_conta_species": True,
             },
         ),
         (
@@ -855,8 +829,12 @@ def test_easy_wf_arguments(tmp_path, monkeypatch):
     assert args.pdf_report_fp == pdf_file.resolve()
 
 
-def test_easy_wf_plot_arguments(tmp_path, monkeypatch):
-    """Test that easy_wf accepts plotting options."""
+def test_easy_wf_exposes_only_the_mandatory_files(tmp_path, monkeypatch):
+    """Test that easy_wf takes the three mandatory files and defaults the rest.
+
+    easy_wf exists to keep the common case a one-line command, so every other
+    setting is fixed at the default it has in search_conta and plot_conta.
+    """
     species_file = tmp_path / "species.tsv"
     species_file.write_text("test\n")
 
@@ -874,21 +852,68 @@ def test_easy_wf_plot_arguments(tmp_path, monkeypatch):
             str(conta_file),
             "-r",
             str(pdf_file),
-            "--nrow",
-            "2",
-            "--ncol",
-            "3",
-            "--no-conta-line",
-            "--color-conta-species",
         ],
     )
 
     args = get_arguments()
 
-    assert args.nrow == 2
-    assert args.ncol == 3
-    assert args.no_conta_line is True
-    assert args.color_conta_species is True
+    assert args.species_ab_table_fp == species_file.resolve()
+    assert args.conta_events_fp == conta_file.resolve()
+    assert args.pdf_report_fp == pdf_file.resolve()
+
+    # Everything run_easy_workflow() reads must still be present.
+    assert args.species_ab_table_2_fp is None
+    assert args.filtering_ab_thr_factor is None
+    assert args.rf_model_fp == search_conta_defaults.MODEL_FILE
+    assert args.probability_cutoff == search_conta_defaults.PROBABILITY_CUTOFF
+    assert args.rate_cutoff == search_conta_defaults.RATE_CUTOFF
+    assert args.nproc == get_available_cpu_count()
+    assert args.nrow == plot_conta_defaults.NROW
+    assert args.ncol == plot_conta_defaults.NCOL
+    assert args.no_conta_line is False
+    assert args.color_conta_species is False
+
+
+@pytest.mark.parametrize(
+    "extra_arguments",
+    [
+        ["--nrow", "2"],
+        ["--ncol", "3"],
+        ["--no-conta-line"],
+        ["--color-conta-species"],
+        ["-m", "model.joblib"],
+        ["--probability-cutoff", "0.8"],
+        ["--rate-cutoff", "0.01"],
+        ["--filter-low-ab", "20"],
+        ["--nproc", "1"],
+    ],
+)
+def test_easy_wf_rejects_optional_arguments(
+    tmp_path,
+    monkeypatch,
+    extra_arguments,
+):
+    """Test that easy_wf does not accept the options of the other commands."""
+    species_file = tmp_path / "species.tsv"
+    species_file.write_text("test\n")
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "crocodeel",
+            "easy_wf",
+            "-s",
+            str(species_file),
+            "-c",
+            str(tmp_path / "contamination.tsv"),
+            "-r",
+            str(tmp_path / "report.pdf"),
+            *extra_arguments,
+        ],
+    )
+
+    with pytest.raises(SystemExit):
+        get_arguments()
 
 
 def test_train_model_does_not_accept_second_abundance_table(
