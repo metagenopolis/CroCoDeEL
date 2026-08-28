@@ -5,6 +5,7 @@ import logging
 import math
 import multiprocessing
 import os
+from collections.abc import Callable
 from importlib.metadata import version
 from pathlib import Path
 
@@ -164,6 +165,7 @@ def get_available_cpu_count() -> int:
 
 def add_abundance_table_arguments(
     parser: argparse.ArgumentParser,
+    include_second_table: bool = True,
 ) -> None:
     """Add arguments used to specify species abundance tables."""
     parser.add_argument(
@@ -175,48 +177,20 @@ def add_abundance_table_arguments(
         help="Input TSV file corresponding to the species abundance table",
     )
 
-    parser.add_argument(
-        "-s2",
-        dest="species_ab_table_2_fp",
-        type=readable_file,
-        required=False,
-        metavar="SPECIES_ABUNDANCE_TABLE_2",
-        help=(
-            "Optional input TSV file corresponding to another species "
-            "abundance table. If provided, samples from this table will "
-            "be considered as contamination targets while those from the "
-            "first table as contamination sources."
-        ),
-    )
-
-    parser.add_argument(
-        "--filter-low-ab",
-        dest="filtering_ab_thr_factor",
-        type=positive_float,
-        default=None,
-        metavar="AB_THRESHOLD_FACTOR",
-        help=(
-            "Filter out low-abundance species that may be inaccurately "
-            "quantified. In each sample, set the abundance of species to "
-            "zero if they are up to %(metavar)s times more abundant than "
-            "the least abundant species. Recommended value for "
-            "MetaPhlAn4: 20 (default: None)"
-        ),
-    )
-
-
-def add_train_model_abundance_table_arguments(
-    parser: argparse.ArgumentParser,
-) -> None:
-    """Add abundance table arguments used for model training."""
-    parser.add_argument(
-        "-s",
-        dest="species_ab_table_fp",
-        type=readable_file,
-        required=True,
-        metavar="SPECIES_ABUNDANCE_TABLE",
-        help="Input TSV file corresponding to the species abundance table",
-    )
+    if include_second_table:
+        parser.add_argument(
+            "-s2",
+            dest="species_ab_table_2_fp",
+            type=readable_file,
+            required=False,
+            metavar="SPECIES_ABUNDANCE_TABLE_2",
+            help=(
+                "Optional input TSV file corresponding to another species "
+                "abundance table. If provided, samples from this table will "
+                "be considered as contamination targets while those from the "
+                "first table as contamination sources."
+            ),
+        )
 
     parser.add_argument(
         "--filter-low-ab",
@@ -534,7 +508,10 @@ def get_arguments() -> argparse.Namespace:
     )
 
     # train_model
-    add_train_model_abundance_table_arguments(train_model_parser)
+    add_abundance_table_arguments(
+        train_model_parser,
+        include_second_table=False,
+    )
     add_train_model_arguments(train_model_parser)
 
     # self_test
@@ -779,23 +756,28 @@ def run_train_model_command(
         )
 
 
+def run_self_test_command(
+    args: argparse.Namespace,
+) -> None:
+    """Run the self_test command."""
+    SelfTest(args.keep_results).run()
+
+
 def main() -> int:
     """Run the CroCoDeEL command-line application."""
     set_logging()
     args = get_arguments()
 
-    try:
-        if args.command == "self_test":
-            SelfTest(args.keep_results).run()
-        elif args.command == "search_conta":
-            run_search_conta_command(args)
-        elif args.command == "plot_conta":
-            run_plot_conta_command(args)
-        elif args.command == "easy_wf":
-            run_easy_workflow(args)
-        elif args.command == "train_model":
-            run_train_model_command(args)
+    commands: dict[str, Callable[[argparse.Namespace], None]] = {
+        "easy_wf": run_easy_workflow,
+        "search_conta": run_search_conta_command,
+        "plot_conta": run_plot_conta_command,
+        "self_test": run_self_test_command,
+        "train_model": run_train_model_command,
+    }
 
+    try:
+        commands[args.command](args)
         return 0
 
     except (InputDataError, SelfTestError) as error:
