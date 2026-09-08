@@ -6,6 +6,8 @@ implements that specialised case directly instead of using sklearn's
 general-purpose ``RANSACRegressor``.
 """
 
+from functools import lru_cache
+
 import numpy as np
 from sklearn.utils import check_random_state
 from sklearn.utils.random import sample_without_replacement
@@ -37,6 +39,41 @@ def _dynamic_max_trials(
         return float("inf")
 
     return abs(float(np.ceil(np.log(numerator) / np.log(denominator))))
+
+
+@lru_cache(maxsize=None)
+def _candidate_subsets(
+    num_samples: int,
+    max_trials: int,
+    min_samples: int,
+    random_state: int,
+) -> np.ndarray:
+    """Return the observation subsets drawn for each RANSAC trial.
+
+    The subsets sklearn draws are fully determined by the number of
+    observations and the random seed: candidate generation looks neither at
+    the data nor at the results of previous trials. They are therefore
+    computed once per distinct number of observations and reused across
+    sample pairs, instead of re-running the sampler for every fit.
+
+    The cache holds at most one entry per possible number of candidate
+    species, and each entry is a few hundred bytes.
+
+    The returned array is shared between callers and must not be modified.
+    """
+    random_generator = check_random_state(random_state)
+    subsets = np.empty((max_trials, min_samples), dtype=np.intp)
+
+    for trial in range(max_trials):
+        subsets[trial] = sample_without_replacement(
+            num_samples,
+            min_samples,
+            random_state=random_generator,
+        )
+
+    subsets.flags.writeable = False
+
+    return subsets
 
 
 def fit_unit_slope_ransac(
@@ -86,18 +123,13 @@ def fit_unit_slope_ransac(
     residuals = ordinate - abscissa
     num_samples = residuals.shape[0]
 
-    # Generate the same random subsets that sklearn would generate.
-    # Candidate generation does not depend on previous trial scores, so the
-    # subsets can safely be generated before any candidates are evaluated.
-    random_generator = check_random_state(random_state)
-    subsets = np.empty((max_trials, min_samples), dtype=np.intp)
-
-    for trial in range(max_trials):
-        subsets[trial] = sample_without_replacement(
-            num_samples,
-            min_samples,
-            random_state=random_generator,
-        )
+    # The same random subsets that sklearn would generate, in the same order.
+    subsets = _candidate_subsets(
+        num_samples,
+        max_trials,
+        min_samples,
+        random_state,
+    )
 
     # For a unit-slope model, the intercept is simply the mean residual of
     # the sampled observations. Score every candidate simultaneously by
