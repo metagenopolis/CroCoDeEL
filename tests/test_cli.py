@@ -1129,6 +1129,7 @@ def test_load_abundance_tables_with_second_table(
 def test_load_abundance_tables_same_file(
     monkeypatch,
     tmp_path,
+    caplog,
 ) -> None:
     """Test that the second table is not loaded when both paths are identical."""
     species_ab_table_fp = tmp_path / "species_abundance.tsv"
@@ -1156,13 +1157,17 @@ def test_load_abundance_tables_same_file(
         filtering_ab_thr_factor=20,
     )
 
-    result, result_2 = load_abundance_tables(args)
+    with caplog.at_level(logging.WARNING):
+        result, result_2 = load_abundance_tables(args)
 
     assert result is species_ab_table
     assert result_2 is None
 
     mock_read.assert_called_once()
     mock_compare.assert_not_called()
+
+    assert "refer to the same file" in caplog.text
+    assert str(species_ab_table_fp) in caplog.text
 
 
 # ---------------------------------------------------------------------------

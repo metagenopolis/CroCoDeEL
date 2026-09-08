@@ -584,23 +584,28 @@ def load_abundance_tables(
 
     species_ab_table_2 = None
 
-    if (
-        args.species_ab_table_2_fp is not None
-        and args.species_ab_table_fp != args.species_ab_table_2_fp
-    ):
-        with args.species_ab_table_2_fp.open(
-            "r",
-            encoding="utf8",
-        ) as species_ab_table_2_fh:
-            species_ab_table_2 = ab_table_utils.read_filter_normalize(
-                species_ab_table_2_fh,
-                args.filtering_ab_thr_factor,
+    if args.species_ab_table_2_fp is not None:
+        if args.species_ab_table_2_fp == args.species_ab_table_fp:
+            logging.warning(
+                "Both abundance tables refer to the same file (%s); "
+                "the second one is ignored and contamination is searched "
+                "within a single table",
+                args.species_ab_table_fp,
             )
+        else:
+            with args.species_ab_table_2_fp.open(
+                "r",
+                encoding="utf8",
+            ) as species_ab_table_2_fh:
+                species_ab_table_2 = ab_table_utils.read_filter_normalize(
+                    species_ab_table_2_fh,
+                    args.filtering_ab_thr_factor,
+                )
 
-        ab_table_utils.compare_species_names(
-            species_ab_table,
-            species_ab_table_2,
-        )
+            ab_table_utils.compare_species_names(
+                species_ab_table,
+                species_ab_table_2,
+            )
 
     return species_ab_table, species_ab_table_2
 
