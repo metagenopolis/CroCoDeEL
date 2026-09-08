@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from crocodeel.ab_table_utils import (compare_species_names, filter_low_ab,
+from crocodeel.ab_table_utils import (check_distinct_sample_names,
+                                      compare_species_names, filter_low_ab,
                                       log_transform, normalize, read,
                                       read_filter_normalize)
 from crocodeel.exceptions import InputDataError
@@ -545,3 +546,73 @@ def test_compare_species_names_no_common_species(
         "Abundance tables have only 0 species names in common"
         in caplog.text
     )
+
+
+# ---------------------------------------------------------------------------
+# check_distinct_sample_names()
+# ---------------------------------------------------------------------------
+
+
+def _table(sample_names: list[str]) -> pd.DataFrame:
+    """Build an abundance table with the given samples and shared species."""
+    return pd.DataFrame(
+        {sample_name: [0.5, 0.5] for sample_name in sample_names},
+        index=["species_1", "species_2"],
+    )
+
+
+def test_check_distinct_sample_names_accepts_disjoint_samples() -> None:
+    """Test that tables with no sample name in common are accepted."""
+    check_distinct_sample_names(
+        _table(["sample1", "sample2"]),
+        _table(["sample3", "sample4"]),
+    )
+
+
+def test_check_distinct_sample_names_accepts_shared_species_names() -> None:
+    """Test that sharing species names is not an error.
+
+    The two tables are expected to be quantified against the same database,
+    so shared species names are normal; only sample names must be unique.
+    """
+    check_distinct_sample_names(
+        _table(["sample1"]),
+        _table(["sample2"]),
+    )
+
+
+def test_check_distinct_sample_names_rejects_one_shared_sample() -> None:
+    """Test that a single shared sample name is rejected."""
+    with pytest.raises(InputDataError) as error:
+        check_distinct_sample_names(
+            _table(["sample1", "sample2"]),
+            _table(["sample2", "sample3"]),
+        )
+
+    assert "sample2" in str(error.value)
+    assert "sample1" not in str(error.value)
+
+
+def test_check_distinct_sample_names_reports_samples_in_order() -> None:
+    """Test that shared sample names are reported in the first table's order."""
+    with pytest.raises(InputDataError) as error:
+        check_distinct_sample_names(
+            _table(["sample1", "sample2", "sample3"]),
+            _table(["sample3", "sample1"]),
+        )
+
+    assert "sample1, sample3" in str(error.value)
+
+
+def test_check_distinct_sample_names_caps_long_lists() -> None:
+    """Test that the error message stays bounded for many shared samples."""
+    sample_names = [f"sample{index}" for index in range(300)]
+
+    with pytest.raises(InputDataError) as error:
+        check_distinct_sample_names(
+            _table(sample_names),
+            _table(sample_names),
+        )
+
+    assert "300 sample names (showing 5)" in str(error.value)
+    assert len(str(error.value)) < 200

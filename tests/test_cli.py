@@ -1126,6 +1126,51 @@ def test_load_abundance_tables_with_second_table(
     )
 
 
+def test_load_abundance_tables_rejects_shared_sample_names(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """Test that a sample name present in both tables is rejected.
+
+    The two tables are joined on their species, so a shared sample name used
+    to surface as a pandas ValueError about overlapping columns. It is
+    reported before the species names are compared, so the fatal problem is
+    not buried under warnings.
+    """
+    species_ab_table_fp = tmp_path / "species_abundance.tsv"
+    species_ab_table_2_fp = tmp_path / "species_abundance_2.tsv"
+
+    species_ab_table_fp.touch()
+    species_ab_table_2_fp.touch()
+
+    species_ab_table = pd.DataFrame({"sample1": [0.1], "sample2": [0.2]})
+    species_ab_table_2 = pd.DataFrame({"sample2": [0.3], "sample3": [0.4]})
+
+    mock_compare = MagicMock()
+
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.ab_table_utils.read_filter_normalize",
+        MagicMock(side_effect=[species_ab_table, species_ab_table_2]),
+    )
+    monkeypatch.setattr(
+        "crocodeel.crocodeel.ab_table_utils.compare_species_names",
+        mock_compare,
+    )
+
+    args = argparse.Namespace(
+        species_ab_table_fp=species_ab_table_fp,
+        species_ab_table_2_fp=species_ab_table_2_fp,
+        filtering_ab_thr_factor=None,
+    )
+
+    with pytest.raises(InputDataError) as error:
+        load_abundance_tables(args)
+
+    assert "sample2" in str(error.value)
+
+    mock_compare.assert_not_called()
+
+
 def test_load_abundance_tables_same_file(
     monkeypatch,
     tmp_path,

@@ -602,6 +602,11 @@ def load_abundance_tables(
                     args.filtering_ab_thr_factor,
                 )
 
+            ab_table_utils.check_distinct_sample_names(
+                species_ab_table,
+                species_ab_table_2,
+            )
+
             ab_table_utils.compare_species_names(
                 species_ab_table,
                 species_ab_table_2,

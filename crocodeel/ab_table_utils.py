@@ -207,3 +207,23 @@ def compare_species_names(species_ab_table: pd.DataFrame, species_ab_table_2: pd
         logging.warning(
             "Missing abundance values will be filled with zeros for non-shared species"
         )
+def check_distinct_sample_names(
+    species_ab_table: pd.DataFrame,
+    species_ab_table_2: pd.DataFrame,
+) -> None:
+    """Check that no sample name appears in both abundance tables."""
+    sample_names_2 = set(species_ab_table_2.columns)
+
+    # Iterate over the first table so the reported order is deterministic.
+    shared_sample_names = [
+        sample_name
+        for sample_name in species_ab_table.columns
+        if sample_name in sample_names_2
+    ]
+
+    if shared_sample_names:
+        raise InputDataError(
+            "The following sample names are present in both abundance "
+            f"tables: {format_sample_names(shared_sample_names)}. "
+            "Sample names must be unique across the two tables."
+        )
