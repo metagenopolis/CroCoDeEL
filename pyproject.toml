@@ -36,7 +36,6 @@ scipy = "^1.17"
 scikit-learn = "^1.8"
 matplotlib = "^3.10"
 tqdm = "^4.67"
-pyarrow = ">=16.0.0"
 
 [tool.poetry.group.mypy.dependencies]
 mypy = "^1.19"
