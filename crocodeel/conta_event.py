@@ -154,7 +154,7 @@ class ContaminationEventIO:
         fh: TextIO,
     ) -> tuple[str | None, int]:
         """Read comments before the header and return the header and line number.
-        
+
         Return ``(None, 0)`` when the file is empty or contains only comments.
         """
         for line_number, line in enumerate(fh, start=1):

@@ -190,7 +190,7 @@ def read_filter_normalize(
 
 def compare_species_names(species_ab_table: pd.DataFrame, species_ab_table_2: pd.DataFrame) -> None:
     """Compare species names between two abundance tables.
-    
+
     Logs warnings when the tables do not contain the same set of species.
     """
     species_names = set(species_ab_table.index)

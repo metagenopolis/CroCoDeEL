@@ -139,6 +139,7 @@ def _reconstruct_sample_pairs(
             f"'{sample_name_pattern.pattern}' "
             f"({format_sample_names(invalid_sample_names)})."
         )
+
     source_samples = [sample for sample in sample_names if "_source_" in sample]
 
     target_samples = [sample for sample in sample_names if "_target_" in sample]
