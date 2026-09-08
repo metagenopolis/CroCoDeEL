@@ -8,9 +8,11 @@ import pandas as pd
 import pytest
 
 from crocodeel.conta_event import ContaminationEvent
-from crocodeel.crocodeel import (bounded_float_01, bounded_int,
-                                 generate_pdf_report, get_arguments,
-                                 get_available_cpu_count,
+from crocodeel.crocodeel import (add_abundance_table_arguments,
+                                 add_easy_wf_arguments, add_plot_arguments,
+                                 add_search_arguments, bounded_float_01,
+                                 bounded_int, generate_pdf_report,
+                                 get_arguments, get_available_cpu_count,
                                  load_abundance_tables,
                                  load_contamination_events,
                                  log_contamination_warnings, main,
@@ -20,8 +22,6 @@ from crocodeel.crocodeel import (bounded_float_01, bounded_int,
                                  run_train_model_command, set_logging,
                                  writable_file)
 from crocodeel.exceptions import InputDataError, SelfTestError
-from crocodeel.plot_conta import Defaults as plot_conta_defaults
-from crocodeel.search_conta import Defaults as search_conta_defaults
 
 # ---------------------------------------------------------------------------
 # main()
@@ -830,10 +830,10 @@ def test_easy_wf_arguments(tmp_path, monkeypatch):
 
 
 def test_easy_wf_exposes_only_the_mandatory_files(tmp_path, monkeypatch):
-    """Test that easy_wf takes the three mandatory files and defaults the rest.
+    """Test that easy_wf accepts the three mandatory files.
 
-    easy_wf exists to keep the common case a one-line command, so every other
-    setting is fixed at the default it has in search_conta and plot_conta.
+    The settings easy_wf supplies on the user's behalf are checked by
+    test_easy_wf_defaults_match_the_commands_it_runs().
     """
     species_file = tmp_path / "species.tsv"
     species_file.write_text("test\n")
@@ -861,17 +861,41 @@ def test_easy_wf_exposes_only_the_mandatory_files(tmp_path, monkeypatch):
     assert args.conta_events_fp == conta_file.resolve()
     assert args.pdf_report_fp == pdf_file.resolve()
 
-    # Everything run_easy_workflow() reads must still be present.
-    assert args.species_ab_table_2_fp is None
-    assert args.filtering_ab_thr_factor is None
-    assert args.rf_model_fp == search_conta_defaults.MODEL_FILE
-    assert args.probability_cutoff == search_conta_defaults.PROBABILITY_CUTOFF
-    assert args.rate_cutoff == search_conta_defaults.RATE_CUTOFF
-    assert args.nproc == get_available_cpu_count()
-    assert args.nrow == plot_conta_defaults.NROW
-    assert args.ncol == plot_conta_defaults.NCOL
-    assert args.no_conta_line is False
-    assert args.color_conta_species is False
+
+def test_easy_wf_defaults_match_the_commands_it_runs(tmp_path) -> None:
+    """Test that easy_wf supplies the same settings as the commands it runs.
+
+    easy_wf exposes only the three mandatory files and runs search_conta and
+    plot_conta with their defaults. Any option added to those commands must
+    therefore also be defaulted by add_easy_wf_arguments(), with the same
+    value. Otherwise easy_wf either fails with an AttributeError once it
+    reaches the corresponding stage, or silently behaves differently from the
+    command it stands in for.
+    """
+    species_ab_table_fp = tmp_path / "species.tsv"
+    species_ab_table_fp.write_text("test\n", encoding="utf8")
+
+    mandatory_arguments = [
+        "-s",
+        str(species_ab_table_fp),
+        "-c",
+        str(tmp_path / "contamination.tsv"),
+        "-r",
+        str(tmp_path / "report.pdf"),
+    ]
+
+    easy_wf_parser = argparse.ArgumentParser()
+    add_easy_wf_arguments(easy_wf_parser)
+
+    all_options_parser = argparse.ArgumentParser()
+    add_abundance_table_arguments(all_options_parser)
+    add_search_arguments(all_options_parser)
+    add_plot_arguments(all_options_parser, include_conta_events=False)
+
+    easy_wf_settings = vars(easy_wf_parser.parse_args(mandatory_arguments))
+    all_settings = vars(all_options_parser.parse_args(mandatory_arguments))
+
+    assert easy_wf_settings == all_settings
 
 
 @pytest.mark.parametrize(
