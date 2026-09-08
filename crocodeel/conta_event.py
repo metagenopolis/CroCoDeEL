@@ -243,15 +243,7 @@ class ContaminationEventIO:
     ) -> None:
         """Write contamination events to TSV format."""
         print(
-            "\t".join(
-                [
-                    "source",
-                    "target",
-                    "rate",
-                    "probability",
-                    "contamination_specific_species",
-                ]
-            ),
+            "\t".join(ContaminationEventIO.REQUIRED_COLUMNS),
             file=fh,
         )
 
