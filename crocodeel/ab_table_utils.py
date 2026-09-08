@@ -1,7 +1,7 @@
 """Utilities for reading and preprocessing species abundance tables."""
 
 import logging
-from typing import Optional, TextIO
+from typing import Optional, TextIO, cast
 
 import numpy as np
 import pandas as pd
@@ -127,11 +127,9 @@ def log_transform(species_ab_table: pd.DataFrame) -> pd.DataFrame:
     Zeros are intentionally converted to -inf.
     """
     with np.errstate(divide="ignore"):
-        log_species_ab_table = pd.DataFrame(
-            np.log10(species_ab_table),
-            index=species_ab_table.index,
-            columns=species_ab_table.columns,
-        )
+        # A NumPy applied to a DataFrame returns a DataFrame with the
+        # same index and columns, which NumPy's type stubs do not express.
+        log_species_ab_table = cast(pd.DataFrame, np.log10(species_ab_table))
 
     logging.info("Species abundance table log-transformed")
     return log_species_ab_table
