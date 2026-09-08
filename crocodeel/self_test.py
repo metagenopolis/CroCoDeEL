@@ -100,11 +100,11 @@ class SelfTest:
 
     @staticmethod
     def _create_temporary_file(suffix: str) -> Path:
-        """Create an empty temporary file and return its path."""
-        mode = "wb" if suffix == ".pdf" else "w"
+        """Create an empty temporary file and return its path.
 
+        Each step reopens the file with the mode and encoding it needs.
+        """
         with NamedTemporaryFile(
-            mode=mode,
             prefix="crocodeel_test_",
             suffix=suffix,
             delete=False,
